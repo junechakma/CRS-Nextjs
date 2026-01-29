@@ -477,48 +477,26 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            <Link href="/register-superadmin" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-rose-500 to-pink-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-2xl mx-auto">
+            <Link href="/login" className="group bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-4 sm:mb-5">
+                <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Super Admin</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">System oversight & analytics</p>
-              <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                Register <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Teacher</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">Self-service registration with instant access</p>
+              <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                Register <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </span>
             </Link>
 
-            <Link href="/register/university-admin" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                <University className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <Link href="/feedback" className="group bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-4 sm:mb-5">
+                <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Institution</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Instant activation - no approval</p>
-              <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-[#468cfe] group-hover:text-blue-700 transition-colors">
-                Register <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-              </span>
-            </Link>
-
-            <Link href="/login" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Teacher</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Self-service registration</p>
-              <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                Register <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-              </span>
-            </Link>
-
-            <Link href="/feedback" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Student</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Anonymous feedback access</p>
-              <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                Access Portal <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Student</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">Anonymous feedback access via session code</p>
+              <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                Access Portal <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </span>
             </Link>
           </div>
