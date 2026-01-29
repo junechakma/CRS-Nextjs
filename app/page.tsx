@@ -33,7 +33,7 @@ export default function Home() {
           <div className="relative flex items-center justify-between py-4 md:py-5">
             {/* Left: Logo */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <img src="/logo.png" alt="CRS Logo" className="w-8 h-8 rounded-lg" />
+              <img src="/assets/logo.png" alt="CRS Logo" className="w-8 h-8 rounded-lg" />
               <span className="text-lg font-semibold text-gray-900 tracking-tight">CRS</span>
             </div>
 
@@ -116,7 +116,7 @@ export default function Home() {
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2">
-              Transform your educational feedback with intelligent analytics, real-time insights, and seamless anonymous response collection.
+              Transform your educational feedback with intelligent analytics, real-time insights, and seamless anonymous response collection with CLO mapping.
             </p>
 
             {/* CTA Buttons */}
@@ -164,7 +164,7 @@ export default function Home() {
           <div className="relative max-w-5xl mx-auto hidden sm:block">
             <div className="bg-gradient-to-b from-gray-50 to-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-xl sm:shadow-2xl shadow-gray-900/10 border border-gray-100">
               <img
-                src="/homepage.png"
+                src="/assets/homepage.png"
                 alt="Class Response System Dashboard"
                 className="w-full rounded-lg sm:rounded-xl"
               />
@@ -377,8 +377,8 @@ export default function Home() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
                 <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">Hierarchical Management</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">Multi-level administrative control from Super Admins to Department levels</p>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">Instant Teacher Access</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">Self-service registration with immediate account activation - no approval workflow needed</p>
             </div>
 
             <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200">
@@ -393,8 +393,8 @@ export default function Home() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">AI CLO Mapping</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">Intelligent question-to-CLO mapping with Bloom&apos;s Taxonomy analysis and recommendations</p>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">AI CLO/PLO Mapping</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">AI-driven alignment of questions to CLOs/PLOs via Gemini with Bloom&apos;s Taxonomy classification</p>
             </div>
 
             <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200">
@@ -402,32 +402,26 @@ export default function Home() {
                 <Brain className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">AI-Powered Analytics</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">Intelligent insights and sentiment analysis for feedback understanding</p>
+              <p className="text-gray-600 text-sm leading-relaxed">Automatic sentiment analysis, pattern recognition, and actionable improvement recommendations</p>
             </div>
 
             <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
                 <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">Course Management</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">Semester-based organization with customizable question templates</p>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">Flexible Question Bank</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">Create custom questions or select from common question bank with hybrid approach support</p>
             </div>
 
             <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-rose-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
                 <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-rose-600" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">Multi-Role Support</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">Role-based access control for all admin and teacher roles</p>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">QR Code Sessions</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">Generate unique access codes and QR codes for time-limited feedback sessions</p>
             </div>
 
-            <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
-              </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">Real-time Sessions</h3>
-              <p className="text-gray-600 text-sm leading-relaxed">Live feedback sessions with instant response collection</p>
-            </div>
+
           </div>
         </div>
       </div>
@@ -489,7 +483,7 @@ export default function Home() {
                 <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Super Admin</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">System-wide control</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">System oversight & analytics</p>
               <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                 Register <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
               </span>
@@ -499,8 +493,8 @@ export default function Home() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
                 <University className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">University Admin</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Institution-level management</p>
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Institution</h3>
+              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Instant activation - no approval</p>
               <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-[#468cfe] group-hover:text-blue-700 transition-colors">
                 Register <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
               </span>
@@ -508,23 +502,23 @@ export default function Home() {
 
             <Link href="/login" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
-                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Faculty / Dept</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Faculty administration</p>
-              <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                Login <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
-              </span>
-            </Link>
-
-            <Link href="/login" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
                 <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Teacher</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Session management</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Self-service registration</p>
               <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                Login <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                Register <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+              </span>
+            </Link>
+
+            <Link href="/feedback" className="group bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-200">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4">
+                <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">Student</h3>
+              <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 hidden sm:block">Anonymous feedback access</p>
+              <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                Access Portal <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
               </span>
             </Link>
           </div>
@@ -537,7 +531,7 @@ export default function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 lg:gap-12">
             <div className="col-span-2 sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                <img src="/logo.png" alt="CRS Logo" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg" />
+                <img src="/assets/logo.png" alt="CRS Logo" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg" />
                 <span className="text-base sm:text-lg font-semibold text-gray-900">CRS</span>
               </div>
               <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
@@ -612,7 +606,7 @@ export default function Home() {
             </button>
 
             <div className="text-center mb-8">
-              <img src="/logo.png" alt="CRS Logo" className="w-12 h-12 rounded-xl mx-auto mb-4" />
+              <img src="/assets/logo.png" alt="CRS Logo" className="w-12 h-12 rounded-xl mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-gray-900">About Us</h2>
             </div>
 
