@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Auth</title>
+</head>
+<body>
+    <h1>Auth Debugger</h1>
+    <button onclick="checkAuth()">Check Auth Status</button>
+    <pre id="output"></pre>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabase = createClient(
+            'https://fkcrxrddbczwksmqlekf.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrY3J4cmRkYmN6d2tzbXFsZWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MjA4NDcsImV4cCI6MjA3NDE5Njg0N30.FW-m1W8y0AlTODTVhh8aMbkpuLPyPg9UREaUl8SDuI8'
+        )
+
+        window.checkAuth = async function() {
+            const output = document.getElementById('output')
+
+            try {
+                // Get session
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+                const info = {
+                    hasSession: !!session,
+                    sessionError: sessionError?.message,
+                    userId: session?.user?.id,
+                    userEmail: session?.user?.email,
+                    accessToken: session?.access_token ? 'Present' : 'Missing'
+                }
+
+                // If we have a session, try to get user from database
+                if (session?.user?.id) {
+                    const { data: dbUser, error: dbError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('auth_user_id', session.user.id)
+                        .single()
+
+                    info.dbUser = dbUser
+                    info.dbError = dbError?.message
+                }
+
+                output.textContent = JSON.stringify(info, null, 2)
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message
+            }
+        }
+    </script>
+</body>
+</html>

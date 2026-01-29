@@ -1,0 +1,353 @@
+import { useState } from 'react'
+import { useSelector } from 'react-redux'
+import { Eye, EyeOff, CheckCircle, AlertCircle, Lock, Shield } from 'lucide-react'
+import { Button, Modal } from '../../shared/components/ui'
+import { PasswordResetService } from '../../services/passwordResetService'
+import type { RootState } from '../../store/store'
+
+interface ChangePasswordFormProps {
+  isOpen: boolean
+  onClose: () => void
+  onSuccess?: () => void
+  className?: string
+}
+
+interface PasswordStrengthIndicatorProps {
+  password: string
+}
+
+function PasswordStrengthIndicator({ password }: PasswordStrengthIndicatorProps) {
+  const validation = PasswordResetService.validatePasswordStrength(password)
+  
+  if (!password) return null
+
+  const getStrengthColor = (strength: string) => {
+    switch (strength) {
+      case 'weak': return 'bg-red-400'
+      case 'medium': return 'bg-yellow-400'
+      case 'strong': return 'bg-green-400'
+      default: return 'bg-gray-300'
+    }
+  }
+
+  const getStrengthWidth = (strength: string) => {
+    switch (strength) {
+      case 'weak': return 'w-1/3'
+      case 'medium': return 'w-2/3'
+      case 'strong': return 'w-full'
+      default: return 'w-0'
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-gray-600">Password strength:</span>
+        <span className={`font-medium ${
+          validation.strength === 'strong' ? 'text-green-600' :
+          validation.strength === 'medium' ? 'text-yellow-600' : 'text-red-600'
+        }`}>
+          {validation.strength.charAt(0).toUpperCase() + validation.strength.slice(1)}
+        </span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className={`h-2 rounded-full transition-all duration-300 ${getStrengthColor(validation.strength)} ${getStrengthWidth(validation.strength)}`}
+        />
+      </div>
+      {validation.errors.length > 0 && (
+        <ul className="mt-2 text-xs text-red-600 space-y-1">
+          {validation.errors.map((error, index) => (
+            <li key={index} className="flex items-center">
+              <span className="w-1 h-1 bg-red-400 rounded-full mr-2 flex-shrink-0 mt-1.5" />
+              {error}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+export default function ChangePasswordForm({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  className = '' 
+}: ChangePasswordFormProps) {
+  const { user } = useSelector((state: RootState) => state.auth)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    // Validate inputs
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('All fields are required')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match')
+      return
+    }
+
+    if (currentPassword === newPassword) {
+      setError('New password must be different from current password')
+      return
+    }
+
+    const validation = PasswordResetService.validatePasswordStrength(newPassword)
+    if (!validation.isValid) {
+      setError('Please fix the password requirements shown above')
+      return
+    }
+
+    if (!user?.id) {
+      setError('User not authenticated')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const result = await PasswordResetService.changePassword({
+        userId: user.id,
+        currentPassword,
+        newPassword,
+        ipAddress: undefined,
+        userAgent: navigator.userAgent || 'Unknown'
+      })
+
+      if (result.success) {
+        setIsSuccess(true)
+        // Reset form after success
+        setTimeout(() => {
+          handleClose()
+          onSuccess?.()
+        }, 2000)
+      } else {
+        setError(result.message)
+      }
+    } catch (error: any) {
+      setError(error.message || 'An unexpected error occurred')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setError('')
+    setIsSuccess(false)
+    setShowCurrentPassword(false)
+    setShowNewPassword(false)
+    setShowConfirmPassword(false)
+    onClose()
+  }
+
+  // Success state
+  if (isSuccess) {
+    return (
+      <Modal isOpen={isOpen} onClose={handleClose} title="Password Changed">
+        <div className="text-center p-6">
+          <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Password Changed Successfully
+          </h3>
+          <p className="text-gray-600">
+            Your password has been updated successfully.
+          </p>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      title="Change Password"
+    >
+      <div className={`p-6 ${className}`}>
+        <div className="flex items-center mb-6">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mr-3">
+            <Shield className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Change Your Password</h3>
+            <p className="text-sm text-gray-600">
+              Update your account password for better security
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="flex">
+                <AlertCircle className="w-5 h-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-red-700">{error}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Current Password */}
+          <div>
+            <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              Current Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="currentPassword"
+                name="currentPassword"
+                type={showCurrentPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter current password"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+                disabled={isLoading}
+              >
+                {showCurrentPassword ? (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <Eye className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* New Password */}
+          <div>
+            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              New Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="newPassword"
+                name="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter new password"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+                disabled={isLoading}
+              >
+                {showNewPassword ? (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <Eye className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+            <PasswordStrengthIndicator password={newPassword} />
+          </div>
+
+          {/* Confirm New Password */}
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={`w-full pl-10 pr-10 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  confirmPassword && newPassword !== confirmPassword
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300'
+                }`}
+                placeholder="Confirm new password"
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+                disabled={isLoading}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <Eye className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+            </div>
+            {confirmPassword && newPassword !== confirmPassword && (
+              <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                isLoading || 
+                !currentPassword || 
+                !newPassword || 
+                !confirmPassword || 
+                newPassword !== confirmPassword ||
+                currentPassword === newPassword
+              }
+              loading={isLoading}
+            >
+              Change Password
+            </Button>
+          </div>
+        </form>
+      </div>
+    </Modal>
+  )
+}

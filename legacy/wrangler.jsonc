@@ -1,0 +1,16 @@
+{
+  "name": "classresponse",
+  "compatibility_date": "2025-08-08",
+  "vars": {
+    "VITE_SUPABASE_URL": "https://xkbulcqwidhgbraeheig.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrYnVsY3F3aWRoZ2JyYWVoZWlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDAwNzcsImV4cCI6MjA2OTY3NjA3N30.xDw37S7r8l1AonpRHPFL8_VpSlFc1zbMg4EzkzG8_D8",
+    "VITE_EMAILJS_SERVICE_ID": "service_fggvt2c",
+    "VITE_EMAILJS_TEMPLATE_ID": "template_tcta18w",
+    "VITE_EMAILJS_PUBLIC_KEY": "MFAkqKgh-C6zLq83R",
+    "VITE_GEMINI_API_KEY": "AIzaSyBt2d0kXxYagVISiH7zIWenuQbXzolkUPs"
+  },
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

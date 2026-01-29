@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Registration Request</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; line-height: 1.6;">
+    <div style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden;">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">CRS System</h1>
+            <p style="color: #e0e7ff; margin: 8px 0 0 0; font-size: 14px;">Course Registration System</p>
+        </div>
+
+        <!-- Main Content -->
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #1f2937; margin: 0 0 20px 0; font-size: 20px; font-weight: 600;">New University Registration Request</h2>
+
+            <p style="color: #4b5563; margin: 0 0 24px 0; font-size: 16px;">Dear Super Administrator,</p>
+
+            <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 14px;">
+                A new university has submitted a registration request that requires your review and approval.
+            </p>
+
+            <!-- University Details Card -->
+            <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin: 24px 0;">
+                <h3 style="color: #1f2937; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">University Details</h3>
+
+                <div style="margin-bottom: 12px;">
+                    <span style="color: #6b7280; font-size: 14px; font-weight: 500;">University Name:</span>
+                    <span style="color: #1f2937; font-size: 14px; margin-left: 8px;">{{university_name}}</span>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <span style="color: #6b7280; font-size: 14px; font-weight: 500;">University Code:</span>
+                    <span style="color: #1f2937; font-size: 14px; margin-left: 8px;">{{university_code}}</span>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Administrator Name:</span>
+                    <span style="color: #1f2937; font-size: 14px; margin-left: 8px;">{{admin_name}}</span>
+                </div>
+
+                <div style="margin-bottom: 0;">
+                    <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Administrator Email:</span>
+                    <span style="color: #1f2937; font-size: 14px; margin-left: 8px;">{{admin_email}}</span>
+                </div>
+            </div>
+
+            <!-- Action Required -->
+            <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 500;">
+                    ⚠️ Action Required: Please review this request and approve or reject it through the Super Admin Dashboard.
+                </p>
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 32px 0;">
+                <a href="{{dashboard_url}}" style="display: inline-block; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);">
+                    Review Request in Dashboard
+                </a>
+            </div>
+
+            <p style="color: #6b7280; margin: 24px 0 0 0; font-size: 14px;">
+                If you have any questions or need assistance, please contact our support team.
+            </p>
+
+            <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 14px;">
+                Best regards,<br>
+                <strong>CRS System Team</strong>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f9fafb; padding: 20px 30px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; margin: 0; font-size: 12px; text-align: center;">
+                This email was sent to {{to_email}} because you are a Super Administrator of the CRS System.
+            </p>
+            <p style="color: #9ca3af; margin: 8px 0 0 0; font-size: 12px; text-align: center;">
+                © 2025 CRS System. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
