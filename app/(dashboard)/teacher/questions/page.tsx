@@ -25,6 +25,10 @@ import {
   Shield,
   Pencil,
   Lock,
+  CheckCircle2,
+  Clock,
+  Power,
+  Calendar,
 } from "lucide-react"
 
 const questionTypes = [
@@ -40,6 +44,8 @@ interface Question {
   text: string
   type: string
   required: boolean
+  scale?: number
+  options?: string[]
 }
 
 interface Template {
@@ -50,6 +56,7 @@ interface Template {
   questions: Question[]
   lastModified: string
   usageCount: number
+  status: "active" | "inactive"
 }
 
 const initialTemplates: Template[] = [
@@ -59,14 +66,15 @@ const initialTemplates: Template[] = [
     description: "Default feedback template created by admin. Contains standard questions for course evaluation.",
     isBase: true,
     questions: [
-      { id: 1, text: "How would you rate the clarity of explanations in today's lecture?", type: "rating", required: true },
-      { id: 2, text: "The pace of the course is appropriate for my learning needs.", type: "rating", required: true },
+      { id: 1, text: "How would you rate the clarity of explanations in today's lecture?", type: "rating", required: true, scale: 5 },
+      { id: 2, text: "The pace of the course is appropriate for my learning needs.", type: "rating", required: true, scale: 5 },
       { id: 3, text: "Do you feel comfortable asking questions during class?", type: "boolean", required: true },
-      { id: 4, text: "The instructor explains concepts in multiple ways to aid understanding.", type: "rating", required: false },
+      { id: 4, text: "The instructor explains concepts in multiple ways to aid understanding.", type: "rating", required: false, scale: 5 },
       { id: 5, text: "What suggestions do you have for improving the course?", type: "text", required: false },
     ],
     lastModified: "Admin",
     usageCount: 156,
+    status: "active",
   },
   {
     id: 2,
@@ -74,13 +82,14 @@ const initialTemplates: Template[] = [
     description: "Comprehensive feedback template for mid-semester course evaluation.",
     isBase: false,
     questions: [
-      { id: 1, text: "How satisfied are you with the course content so far?", type: "rating", required: true },
+      { id: 1, text: "How satisfied are you with the course content so far?", type: "rating", required: true, scale: 10 },
       { id: 2, text: "Which topics have you found most challenging?", type: "text", required: true },
-      { id: 3, text: "The assignments help reinforce the concepts taught in class.", type: "rating", required: true },
+      { id: 3, text: "The assignments help reinforce the concepts taught in class.", type: "rating", required: true, scale: 5 },
       { id: 4, text: "Would you recommend this course to other students?", type: "boolean", required: false },
     ],
     lastModified: "2 days ago",
     usageCount: 24,
+    status: "active",
   },
   {
     id: 3,
@@ -88,12 +97,13 @@ const initialTemplates: Template[] = [
     description: "Short template for quick feedback after each class session.",
     isBase: false,
     questions: [
-      { id: 1, text: "How would you rate today's session?", type: "rating", required: true },
+      { id: 1, text: "How would you rate today's session?", type: "rating", required: true, scale: 5 },
       { id: 2, text: "What was the most valuable part of today's class?", type: "text", required: false },
       { id: 3, text: "Any topics you'd like more clarification on?", type: "text", required: false },
     ],
     lastModified: "1 week ago",
     usageCount: 45,
+    status: "active",
   },
   {
     id: 4,
@@ -101,14 +111,15 @@ const initialTemplates: Template[] = [
     description: "Feedback template specifically designed for laboratory sessions.",
     isBase: false,
     questions: [
-      { id: 1, text: "The lab instructions were clear and easy to follow.", type: "rating", required: true },
+      { id: 1, text: "The lab instructions were clear and easy to follow.", type: "rating", required: true, scale: 5 },
       { id: 2, text: "Did you complete the lab exercises?", type: "boolean", required: true },
       { id: 3, text: "How confident do you feel about applying today's concepts?", type: "numeric", required: true },
       { id: 4, text: "What equipment or resources would improve the lab experience?", type: "text", required: false },
-      { id: 5, text: "Which part of the lab was most challenging?", type: "multiple", required: false },
+      { id: 5, text: "Which part of the lab was most challenging?", type: "multiple", required: false, options: ["Setup & Configuration", "Understanding Instructions", "Debugging Errors", "Time Management", "Group Coordination"] },
     ],
     lastModified: "5 days ago",
     usageCount: 18,
+    status: "inactive",
   },
 ]
 
@@ -120,6 +131,7 @@ export default function QuestionsPage() {
   const [openDropdown, setOpenDropdown] = useState<number | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const [statusFilter, setStatusFilter] = useState("all")
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -133,10 +145,12 @@ export default function QuestionsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const filteredTemplates = templates.filter((template) =>
-    template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredTemplates = templates.filter((template) => {
+    const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === "all" || template.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   const baseTemplate = templates.find(t => t.isBase)
   const customTemplates = filteredTemplates.filter(t => !t.isBase)
@@ -163,6 +177,7 @@ export default function QuestionsPage() {
       isBase: false,
       lastModified: "Just now",
       usageCount: 0,
+      status: "inactive",
     }
     setTemplates(prev => [...prev, newTemplate])
     setOpenDropdown(null)
@@ -173,9 +188,41 @@ export default function QuestionsPage() {
     setOpenDropdown(null)
   }
 
+  const handleToggleStatus = (templateId: number) => {
+    setTemplates(prev =>
+      prev.map(t =>
+        t.id === templateId
+          ? { ...t, status: t.status === "active" ? "inactive" : "active" }
+          : t
+      )
+    )
+    setOpenDropdown(null)
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return (
+          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1.5">
+            <CheckCircle2 className="w-3 h-3" />
+            Active
+          </Badge>
+        )
+      case "inactive":
+        return (
+          <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100 gap-1.5">
+            <Clock className="w-3 h-3" />
+            Inactive
+          </Badge>
+        )
+      default:
+        return null
+    }
+  }
+
   const stats = {
     totalTemplates: templates.length,
-    customTemplates: templates.filter(t => !t.isBase).length,
+    activeTemplates: templates.filter(t => t.status === "active").length,
     totalQuestions: templates.reduce((acc, t) => acc + t.questions.length, 0),
     totalUsage: templates.reduce((acc, t) => acc + t.usageCount, 0),
   }
@@ -246,12 +293,12 @@ export default function QuestionsPage() {
               </div>
               <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-violet-50">
-                    <FileText className="w-5 h-5 text-violet-600" />
+                  <div className="p-2 rounded-lg bg-emerald-50">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-slate-900">{stats.customTemplates}</p>
-                    <p className="text-xs text-slate-500">My Templates</p>
+                    <p className="text-2xl font-bold text-slate-900">{stats.activeTemplates}</p>
+                    <p className="text-xs text-slate-500">Active Templates</p>
                   </div>
                 </div>
               </div>
@@ -279,17 +326,41 @@ export default function QuestionsPage() {
               </div>
             </div>
 
-            {/* Search */}
+            {/* Filter & Search */}
             <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search templates..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
-                />
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+                  {[
+                    { id: "all", label: "All Templates" },
+                    { id: "active", label: "Active", dot: true },
+                    { id: "inactive", label: "Inactive" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setStatusFilter(tab.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
+                        statusFilter === tab.id
+                          ? "bg-indigo-100 text-indigo-700"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {tab.label}
+                      {tab.dot && statusFilter !== tab.id && (
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative w-full sm:w-auto">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search templates..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full sm:w-64 pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                  />
+                </div>
               </div>
             </div>
 
@@ -311,12 +382,13 @@ export default function QuestionsPage() {
                           <Shield className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <h3 className="font-semibold text-lg text-slate-900">{baseTemplate.name}</h3>
                             <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
                               <Lock className="w-3 h-3 mr-1" />
                               Admin
                             </Badge>
+                            {getStatusBadge(baseTemplate.status)}
                           </div>
                           <p className="text-sm text-slate-600 mb-3">{baseTemplate.description}</p>
                           <div className="flex items-center gap-4 text-sm">
@@ -372,12 +444,28 @@ export default function QuestionsPage() {
                               </div>
                               <div className="flex-1">
                                 <p className="text-sm text-slate-700">{question.text}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-xs text-slate-500">{typeConfig.label}</span>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span className="text-xs text-slate-500">
+                                    {typeConfig.label}
+                                    {question.type === "rating" && question.scale && ` (1-${question.scale})`}
+                                  </span>
                                   {question.required && (
                                     <Badge variant="outline" className="text-xs py-0 h-5">Required</Badge>
                                   )}
                                 </div>
+                                {question.type === "multiple" && question.options && question.options.length > 0 && (
+                                  <div className="mt-2 pl-2 border-l-2 border-slate-200">
+                                    <p className="text-xs text-slate-500 mb-1">Options:</p>
+                                    <ul className="text-xs text-slate-600 space-y-0.5">
+                                      {question.options.map((option, optIndex) => (
+                                        <li key={optIndex} className="flex items-center gap-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                          {option}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )
@@ -414,38 +502,56 @@ export default function QuestionsPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {customTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className="bg-white rounded-2xl border border-slate-200/60 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all"
+                      className={`bg-white rounded-2xl border transition-all duration-300 hover:shadow-lg group cursor-pointer ${
+                        template.status === "active"
+                          ? "border-emerald-200 hover:border-emerald-300"
+                          : "border-slate-200/60 hover:border-slate-300"
+                      }`}
                     >
                       <div
-                        className="p-5 cursor-pointer"
+                        className="p-5"
                         onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-4">
-                            <div className="p-3 rounded-xl bg-slate-100">
-                              <FileText className="w-6 h-6 text-slate-600" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-lg text-slate-900 mb-1">{template.name}</h3>
-                              <p className="text-sm text-slate-500 mb-3">{template.description}</p>
-                              <div className="flex items-center gap-4 text-sm">
-                                <span className="text-slate-500">
-                                  <span className="font-semibold text-slate-700">{template.questions.length}</span> questions
-                                </span>
-                                <span className="text-slate-500">
-                                  Used <span className="font-semibold text-slate-700">{template.usageCount}</span> times
-                                </span>
-                                <span className="text-slate-400">
-                                  Modified {template.lastModified}
-                                </span>
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                          {/* Template Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3 mb-2">
+                              {template.status === "active" && (
+                                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full mt-2 shrink-0 animate-pulse" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                                  {template.name}
+                                </h3>
+                                <p className="text-sm text-slate-500 mt-1 line-clamp-1">{template.description}</p>
                               </div>
                             </div>
+
+                            {/* Meta Info */}
+                            <div className="flex items-center gap-4 text-sm text-slate-500 mt-3 flex-wrap">
+                              <span className="flex items-center gap-1.5">
+                                <MessageSquare className="w-4 h-4" />
+                                {template.questions.length} questions
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <Star className="w-4 h-4" />
+                                Used {template.usageCount} times
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <Calendar className="w-4 h-4" />
+                                {template.lastModified}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
+
+                          {/* Status & Actions */}
+                          <div className="flex items-center gap-3 lg:border-l lg:border-slate-200 lg:pl-6">
+                            {getStatusBadge(template.status)}
+
                             {/* Dropdown */}
                             <div className="relative" ref={openDropdown === template.id ? dropdownRef : null}>
                               <button
@@ -459,7 +565,7 @@ export default function QuestionsPage() {
                               </button>
 
                               {openDropdown === template.id && (
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -480,6 +586,16 @@ export default function QuestionsPage() {
                                     <Copy className="w-4 h-4 text-slate-400" />
                                     Duplicate
                                   </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleToggleStatus(template.id)
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                  >
+                                    <Power className="w-4 h-4 text-slate-400" />
+                                    {template.status === "active" ? "Deactivate" : "Activate"}
+                                  </button>
                                   <div className="border-t border-slate-100 my-1" />
                                   <button
                                     onClick={(e) => {
@@ -495,7 +611,13 @@ export default function QuestionsPage() {
                               )}
                             </div>
 
-                            <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setExpandedTemplate(expandedTemplate === template.id ? null : template.id)
+                              }}
+                              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
                               {expandedTemplate === template.id ? (
                                 <ChevronDown className="w-5 h-5 text-slate-500" />
                               ) : (
@@ -508,7 +630,7 @@ export default function QuestionsPage() {
 
                       {/* Expanded Questions */}
                       {expandedTemplate === template.id && (
-                        <div className="border-t border-slate-100 bg-slate-50/50 p-5">
+                        <div className="border-t border-slate-100 bg-slate-50/50 p-5 rounded-b-2xl">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="text-sm font-medium text-slate-700">Questions in this template:</h4>
                             <Button
@@ -536,12 +658,28 @@ export default function QuestionsPage() {
                                   </div>
                                   <div className="flex-1">
                                     <p className="text-sm text-slate-700">{question.text}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-xs text-slate-500">{typeConfig.label}</span>
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                      <span className="text-xs text-slate-500">
+                                        {typeConfig.label}
+                                        {question.type === "rating" && question.scale && ` (1-${question.scale})`}
+                                      </span>
                                       {question.required && (
                                         <Badge variant="outline" className="text-xs py-0 h-5">Required</Badge>
                                       )}
                                     </div>
+                                    {question.type === "multiple" && question.options && question.options.length > 0 && (
+                                      <div className="mt-2 pl-2 border-l-2 border-slate-200">
+                                        <p className="text-xs text-slate-500 mb-1">Options:</p>
+                                        <ul className="text-xs text-slate-600 space-y-0.5">
+                                          {question.options.map((option, optIndex) => (
+                                            <li key={optIndex} className="flex items-center gap-1.5">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                              {option}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )
@@ -594,6 +732,7 @@ export default function QuestionsPage() {
               isBase: false,
               lastModified: "Just now",
               usageCount: 0,
+              status: "active",
             }
             setTemplates(prev => [...prev, newTemplate])
           }

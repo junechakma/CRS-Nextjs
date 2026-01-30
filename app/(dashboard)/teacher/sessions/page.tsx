@@ -1,10 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/layout/sidebar/sidebar"
 import { Header } from "@/components/layout/header/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CreateSessionModal } from "@/components/teacher/create-session-modal"
+import { EditSessionModal } from "@/components/teacher/edit-session-modal"
 import {
   Calendar,
   Plus,
@@ -26,9 +29,31 @@ import {
   ChevronRight,
   MessageSquare,
   Timer,
+  Pencil,
+  Trash2,
+  Power,
+  X,
+  Download,
 } from "lucide-react"
 
-const sessions = [
+interface Session {
+  id: number
+  name: string
+  course: string
+  courseCode: string
+  accessCode: string
+  status: string
+  responses: number
+  total: number
+  startTime: string
+  endTime: string
+  date: string
+  duration: string
+  courseId?: string
+  templateId?: string
+}
+
+const initialSessions: Session[] = [
   {
     id: 1,
     name: "Mid-Semester Feedback",
@@ -42,6 +67,8 @@ const sessions = [
     endTime: "11:30 AM",
     date: "Today",
     duration: "45 min active",
+    courseId: "1",
+    templateId: "1",
   },
   {
     id: 2,
@@ -56,6 +83,8 @@ const sessions = [
     endTime: "12:00 PM",
     date: "Today",
     duration: "20 min active",
+    courseId: "2",
+    templateId: "2",
   },
   {
     id: 3,
@@ -70,6 +99,8 @@ const sessions = [
     endTime: "3:30 PM",
     date: "Today",
     duration: "Starts in 2h",
+    courseId: "3",
+    templateId: "3",
   },
   {
     id: 4,
@@ -84,6 +115,8 @@ const sessions = [
     endTime: "5:00 PM",
     date: "Tomorrow",
     duration: "7 hours",
+    courseId: "4",
+    templateId: "1",
   },
   {
     id: 5,
@@ -98,6 +131,8 @@ const sessions = [
     endTime: "11:00 AM",
     date: "Yesterday",
     duration: "Completed",
+    courseId: "1",
+    templateId: "1",
   },
   {
     id: 6,
@@ -112,7 +147,23 @@ const sessions = [
     endTime: "4:00 PM",
     date: "Jan 28, 2025",
     duration: "Completed",
+    courseId: "2",
+    templateId: "2",
   },
+]
+
+const courses = [
+  { id: "1", name: "Introduction to Machine Learning", code: "CS401" },
+  { id: "2", name: "Database Systems", code: "CS305" },
+  { id: "3", name: "Data Structures & Algorithms", code: "CS201" },
+  { id: "4", name: "Software Engineering", code: "CS350" },
+]
+
+const templates = [
+  { id: "1", name: "Base Template" },
+  { id: "2", name: "Mid-Semester Review" },
+  { id: "3", name: "Quick Session Feedback" },
+  { id: "4", name: "Lab Session Evaluation" },
 ]
 
 const stats = [
@@ -152,13 +203,63 @@ const stats = [
 ]
 
 export default function SessionsPage() {
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [filter, setFilter] = useState("all")
+  const [sessions, setSessions] = useState<Session[]>(initialSessions)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [editingSession, setEditingSession] = useState<Session | null>(null)
+  const [qrSession, setQrSession] = useState<Session | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   const filteredSessions = sessions.filter((session) => {
-    if (filter === "all") return true
-    return session.status === filter
+    const matchesFilter = filter === "all" || session.status === filter
+    const matchesSearch = session.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      session.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      session.courseCode.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesFilter && matchesSearch
   })
+
+  const handleDelete = (sessionId: number) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId))
+    setOpenDropdown(null)
+  }
+
+  const handleEdit = (session: Session) => {
+    setEditingSession(session)
+    setOpenDropdown(null)
+  }
+
+  const handleToggleStatus = (sessionId: number) => {
+    setSessions(prev =>
+      prev.map(s => {
+        if (s.id === sessionId) {
+          if (s.status === "scheduled") return { ...s, status: "live", duration: "Just started" }
+          if (s.status === "live") return { ...s, status: "completed", duration: "Completed" }
+          return s
+        }
+        return s
+      })
+    )
+    setOpenDropdown(null)
+  }
+
+  const copyAccessCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -230,7 +331,10 @@ export default function SessionsPage() {
                   Create and manage feedback collection sessions
                 </p>
               </div>
-              <Button className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0">
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0"
+              >
                 <Plus className="w-5 h-5" />
                 New Session
               </Button>
@@ -295,6 +399,8 @@ export default function SessionsPage() {
                   <input
                     type="text"
                     placeholder="Search sessions..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full sm:w-64 pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
                   />
                 </div>
@@ -362,81 +468,323 @@ export default function SessionsPage() {
                             </span>
                           </div>
                         </div>
-                        <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                        <button
+                          onClick={() => copyAccessCode(session.accessCode)}
+                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          title="Copy access code"
+                        >
                           <Copy className="w-4 h-4 text-slate-500" />
                         </button>
-                        <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                        <button
+                          onClick={() => setQrSession(session)}
+                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          title="Show QR code"
+                        >
                           <QrCode className="w-4 h-4 text-slate-500" />
                         </button>
-                      </div>
-
-                      {/* Progress */}
-                      <div className="lg:border-l lg:border-slate-200 lg:pl-6 min-w-[140px]">
-                        <div className="flex items-center justify-between text-sm mb-1.5">
-                          <span className="text-slate-600">Responses</span>
-                          <span className="font-semibold text-slate-900">
-                            {session.responses}/{session.total}
-                          </span>
-                        </div>
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              session.status === "live"
-                                ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-                                : session.status === "completed"
-                                ? "bg-gradient-to-r from-indigo-500 to-violet-500"
-                                : "bg-slate-300"
-                            }`}
-                            style={{
-                              width: `${(session.responses / session.total) * 100}%`,
-                            }}
-                          />
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {Math.round((session.responses / session.total) * 100)}%
-                          response rate
-                        </p>
                       </div>
 
                       {/* Status & Actions */}
                       <div className="flex items-center gap-3 lg:border-l lg:border-slate-200 lg:pl-6">
                         {getStatusBadge(session.status)}
-                        <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                          <MoreVertical className="w-4 h-4 text-slate-400" />
-                        </button>
+
+                        {/* Dropdown */}
+                        <div className="relative" ref={openDropdown === session.id ? dropdownRef : null}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenDropdown(openDropdown === session.id ? null : session.id)
+                            }}
+                            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4 text-slate-400" />
+                          </button>
+
+                          {openDropdown === session.id && (
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEdit(session)
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <Pencil className="w-4 h-4 text-slate-400" />
+                                Edit Session
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  copyAccessCode(session.accessCode)
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <Copy className="w-4 h-4 text-slate-400" />
+                                Copy Access Code
+                              </button>
+                              {session.status !== "completed" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleStatus(session.id)
+                                  }}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                >
+                                  <Power className="w-4 h-4 text-slate-400" />
+                                  {session.status === "scheduled" ? "Start Session" : "End Session"}
+                                </button>
+                              )}
+                              <div className="border-t border-slate-100 my-1" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(session.id)
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete Session
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Quick Actions on Hover */}
-                  {session.status === "live" && (
-                    <div className="border-t border-slate-100 px-5 py-3 bg-slate-50/50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <span className="text-sm text-slate-600">
-                        {session.total - session.responses} students haven't
-                        responded yet
-                      </span>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="gap-1.5">
-                          <ExternalLink className="w-4 h-4" />
-                          View Live
-                        </Button>
+                  {/* Quick Actions */}
+                  <div className="border-t border-slate-100 px-5 py-3 bg-slate-50/50 flex items-center justify-between">
+                    <span className="text-sm text-slate-600 flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-slate-400" />
+                      <span className="font-semibold text-slate-700">{session.responses}</span> students responded
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => router.push(`/teacher/sessions/${session.id}/analytics`)}
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                        View Analytics
+                      </Button>
+                      {session.status === "live" && (
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleToggleStatus(session.id)}
                           className="gap-1.5 text-red-600 hover:text-red-700 hover:border-red-300"
                         >
                           <StopCircle className="w-4 h-4" />
                           End Session
                         </Button>
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </main>
       </div>
+
+      {/* Create Session Modal */}
+      <CreateSessionModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        courses={courses}
+        templates={templates}
+        onSubmit={(data) => {
+          const selectedCourse = courses.find(c => c.id === data.courseId)
+          const now = new Date()
+
+          let sessionDate: string
+          let startTime: string
+          let endTime: string
+          let status: string
+          let duration: string
+
+          if (data.sessionType === "now") {
+            // Start immediately with duration
+            sessionDate = "Today"
+            startTime = formatTime(`${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`)
+            const endDate = new Date(now.getTime() + data.duration * 60000)
+            endTime = formatTime(`${endDate.getHours().toString().padStart(2, "0")}:${endDate.getMinutes().toString().padStart(2, "0")}`)
+            status = "live"
+            duration = "Just started"
+          } else {
+            // Scheduled session
+            sessionDate = formatDate(data.date)
+            startTime = formatTime(data.startTime)
+            endTime = formatTime(data.endTime)
+            status = "scheduled"
+            duration = "Scheduled"
+          }
+
+          const newSession: Session = {
+            id: Date.now(),
+            name: data.name,
+            course: selectedCourse?.name || "",
+            courseCode: selectedCourse?.code || "",
+            accessCode: data.accessCode,
+            status: status,
+            responses: 0,
+            total: 45,
+            startTime: startTime,
+            endTime: endTime,
+            date: sessionDate,
+            duration: duration,
+            courseId: data.courseId,
+            templateId: data.templateId,
+          }
+          setSessions(prev => [newSession, ...prev])
+          setIsCreateModalOpen(false)
+        }}
+      />
+
+      {/* Edit Session Modal */}
+      <EditSessionModal
+        isOpen={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        session={editingSession}
+        courses={courses}
+        templates={templates}
+        onSubmit={(data) => {
+          const selectedCourse = courses.find(c => c.id === data.courseId)
+          setSessions(prev =>
+            prev.map(s =>
+              s.id === data.id
+                ? {
+                    ...s,
+                    name: data.name,
+                    course: selectedCourse?.name || s.course,
+                    courseCode: selectedCourse?.code || s.courseCode,
+                    accessCode: data.accessCode,
+                    status: data.status,
+                    startTime: formatTime(data.startTime),
+                    endTime: formatTime(data.endTime),
+                    date: formatDate(data.date),
+                    courseId: data.courseId,
+                    templateId: data.templateId,
+                  }
+                : s
+            )
+          )
+          setEditingSession(null)
+        }}
+      />
+
+      {/* QR Code Modal */}
+      {qrSession && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setQrSession(null)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-sm w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200">
+                      <QrCode className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-900">Session QR Code</h2>
+                      <p className="text-sm text-slate-500">{qrSession.name}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setQrSession(null)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* QR Code */}
+              <div className="p-6 flex flex-col items-center">
+                <div className="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm mb-4">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrSession.accessCode)}&bgcolor=ffffff&color=1e293b&margin=0`}
+                    alt={`QR Code for ${qrSession.accessCode}`}
+                    className="w-48 h-48"
+                  />
+                </div>
+
+                {/* Access Code Display */}
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 w-full mb-4">
+                  <p className="text-xs text-slate-500 text-center mb-1">Access Code</p>
+                  <p className="text-2xl font-mono font-bold text-center text-slate-900 tracking-wider">
+                    {qrSession.accessCode}
+                  </p>
+                </div>
+
+                {/* Session Info */}
+                <div className="text-center text-sm text-slate-600 mb-4">
+                  <p className="font-medium text-slate-900">{qrSession.course}</p>
+                  <p>{qrSession.date} • {qrSession.startTime} - {qrSession.endTime}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 w-full">
+                  <Button
+                    variant="outline"
+                    onClick={() => copyAccessCode(qrSession.accessCode)}
+                    className="flex-1 gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy Code
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const link = document.createElement("a")
+                      link.href = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrSession.accessCode)}&bgcolor=ffffff&color=1e293b&margin=10`
+                      link.download = `qr-${qrSession.accessCode}.png`
+                      link.click()
+                    }}
+                    className="flex-1 gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
+}
+
+// Helper functions
+function formatTime(time24: string): string {
+  if (!time24) return ""
+  const [hours, minutes] = time24.split(":")
+  const h = parseInt(hours)
+  const ampm = h >= 12 ? "PM" : "AM"
+  const h12 = h % 12 || 12
+  return `${h12}:${minutes} ${ampm}`
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return ""
+  const date = new Date(dateStr)
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) return "Today"
+  if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow"
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday"
+
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }

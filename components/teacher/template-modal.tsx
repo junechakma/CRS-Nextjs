@@ -23,6 +23,8 @@ interface Question {
   text: string
   type: string
   required: boolean
+  scale?: number
+  options?: string[]
 }
 
 interface Template {
@@ -61,6 +63,8 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
   const [newQuestionText, setNewQuestionText] = useState("")
   const [newQuestionType, setNewQuestionType] = useState("rating")
   const [newQuestionRequired, setNewQuestionRequired] = useState(true)
+  const [newQuestionScale, setNewQuestionScale] = useState(5)
+  const [newQuestionOptions, setNewQuestionOptions] = useState("")
 
   // Initialize form when template changes
   useEffect(() => {
@@ -77,6 +81,8 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
     setNewQuestionText("")
     setNewQuestionType("rating")
     setNewQuestionRequired(true)
+    setNewQuestionScale(5)
+    setNewQuestionOptions("")
   }, [template, isOpen])
 
   // Close on escape key
@@ -104,15 +110,31 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
 
   const addQuestion = () => {
     if (!newQuestionText.trim()) return
+
+    // Validate multiple choice options
+    if (newQuestionType === "multiple") {
+      const options = newQuestionOptions.split("\n").filter(opt => opt.trim())
+      if (options.length < 2) {
+        setErrors(prev => ({ ...prev, questions: "Multiple choice questions must have at least 2 options" }))
+        return
+      }
+    }
+
     const newQuestion: Question = {
       id: Date.now(),
       text: newQuestionText.trim(),
       type: newQuestionType,
       required: newQuestionRequired,
+      scale: newQuestionType === "rating" ? newQuestionScale : undefined,
+      options: newQuestionType === "multiple"
+        ? newQuestionOptions.split("\n").filter(opt => opt.trim())
+        : undefined,
     }
     setQuestions(prev => [...prev, newQuestion])
     setNewQuestionText("")
     setNewQuestionRequired(true)
+    setNewQuestionScale(5)
+    setNewQuestionOptions("")
     setErrors(prev => ({ ...prev, questions: undefined }))
   }
 
@@ -244,9 +266,10 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-slate-700 leading-relaxed">{question.text}</p>
-                          <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${typeConfig.bg} ${typeConfig.color}`}>
                               {typeConfig.label}
+                              {question.type === "rating" && question.scale && ` (1-${question.scale})`}
                             </span>
                             {question.required && (
                               <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
@@ -254,6 +277,19 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
                               </span>
                             )}
                           </div>
+                          {question.type === "multiple" && question.options && question.options.length > 0 && (
+                            <div className="mt-2 pl-2 border-l-2 border-slate-200">
+                              <p className="text-xs text-slate-500 mb-1">Options:</p>
+                              <ul className="text-xs text-slate-600 space-y-0.5">
+                                {question.options.map((option, optIndex) => (
+                                  <li key={optIndex} className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                    {option}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -268,7 +304,7 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
                 </div>
               )}
 
-              {errors.questions && questions.length === 0 && (
+              {errors.questions && (
                 <p className="mb-3 text-xs text-red-500 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.questions}
@@ -321,6 +357,49 @@ export function TemplateModal({ isOpen, onClose, template, onSubmit }: TemplateM
                     })}
                   </div>
                 </div>
+
+                {/* Rating Scale - Only shown for rating type */}
+                {newQuestionType === "rating" && (
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-slate-600 mb-2">
+                      <Star className="w-3 h-3 inline mr-1 text-amber-500" />
+                      Rating Scale (1 to N)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={2}
+                        max={10}
+                        value={newQuestionScale}
+                        onChange={(e) => setNewQuestionScale(Math.min(10, Math.max(2, parseInt(e.target.value) || 5)))}
+                        className="w-24 px-3 py-2 rounded-xl border-2 border-slate-200 focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition-all outline-none text-sm text-center bg-white"
+                      />
+                      <span className="text-xs text-slate-500">
+                        Students will rate from 1 to {newQuestionScale}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Multiple Choice Options - Only shown for multiple choice type */}
+                {newQuestionType === "multiple" && (
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-slate-600 mb-2">
+                      <List className="w-3 h-3 inline mr-1 text-violet-500" />
+                      Options (one per line)
+                    </label>
+                    <textarea
+                      value={newQuestionOptions}
+                      onChange={(e) => setNewQuestionOptions(e.target.value)}
+                      placeholder={"Option 1\nOption 2\nOption 3"}
+                      rows={4}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 transition-all outline-none text-sm bg-white resize-none"
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      Enter each option on a new line. Minimum 2 options required.
+                    </p>
+                  </div>
+                )}
 
                 {/* Required Toggle & Add Button */}
                 <div className="flex items-center justify-between">
