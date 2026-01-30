@@ -15,6 +15,7 @@ import {
   HelpCircle,
   CalendarDays,
   Target,
+  CreditCard,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -25,7 +26,7 @@ interface SidebarProps {
 
 const superAdminNavigation = [
   { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
-  { name: "Teachers", href: "/super-admin/teachers", icon: Users },
+  { name: "Users", href: "/super-admin/users", icon: Users },
   { name: "Question Bank", href: "/super-admin/question-bank", icon: BookOpen },
   { name: "Analytics", href: "/super-admin/analytics", icon: BarChart3 },
   { name: "Settings", href: "/super-admin/settings", icon: Settings },
@@ -39,6 +40,7 @@ const teacherNavigation = [
   { name: "Questions", href: "/teacher/questions", icon: HelpCircle },
   { name: "CLO Mapping", href: "/teacher/clo-mapping", icon: Target },
   { name: "Analytics", href: "/teacher/analytics", icon: BarChart3 },
+  { name: "Subscription", href: "/teacher/subscription", icon: CreditCard },
   { name: "Profile", href: "/teacher/profile", icon: Settings },
 ]
 

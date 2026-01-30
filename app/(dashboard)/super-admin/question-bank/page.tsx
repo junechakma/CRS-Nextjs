@@ -1,177 +1,716 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar/sidebar"
 import { Header } from "@/components/layout/header/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Spotlight } from "@/components/ui/spotlight"
 import {
-  BookOpen,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Copy,
-  FolderOpen,
   FileText,
-  MessageSquare,
+  Search,
   Star,
+  MessageSquare,
+  ToggleLeft,
+  Hash,
+  ChevronRight,
+  ChevronDown,
+  Layers,
+  Shield,
+  Pencil,
+  Lock,
+  CheckCircle2,
+  Clock,
+  Power,
+  X,
+  Plus,
+  Trash2,
+  Save,
+  List,
+  GripVertical,
 } from "lucide-react"
 
-const categories = [
-  { id: 1, name: "Course Feedback", count: 124, color: "from-blue-500 to-cyan-500" },
-  { id: 2, name: "Teaching Quality", count: 89, color: "from-emerald-500 to-teal-500" },
-  { id: 3, name: "Assessment", count: 67, color: "from-violet-500 to-purple-500" },
-  { id: 4, name: "Learning Resources", count: 45, color: "from-amber-500 to-orange-500" },
-  { id: 5, name: "Student Engagement", count: 56, color: "from-pink-500 to-rose-500" },
+const questionTypes = [
+  { id: "rating", label: "Rating Scale", icon: Star, color: "text-amber-500", bg: "bg-amber-50" },
+  { id: "text", label: "Open Text", icon: MessageSquare, color: "text-blue-500", bg: "bg-blue-50" },
+  { id: "multiple", label: "Multiple Choice", icon: List, color: "text-violet-500", bg: "bg-violet-50" },
+  { id: "boolean", label: "Yes/No", icon: ToggleLeft, color: "text-emerald-500", bg: "bg-emerald-50" },
+  { id: "numeric", label: "Numeric", icon: Hash, color: "text-rose-500", bg: "bg-rose-50" },
 ]
 
-const questions = [
-  { id: 1, question: "How would you rate the overall quality of instruction in this course?", category: "Teaching Quality", type: "Rating Scale", usageCount: 156, isFavorite: true },
-  { id: 2, question: "The course materials were well-organized and easy to follow.", category: "Learning Resources", type: "Likert Scale", usageCount: 134, isFavorite: true },
-  { id: 3, question: "What aspects of the course did you find most valuable?", category: "Course Feedback", type: "Open Text", usageCount: 98, isFavorite: false },
-  { id: 4, question: "The assessments accurately measured my understanding of the material.", category: "Assessment", type: "Likert Scale", usageCount: 87, isFavorite: false },
-  { id: 5, question: "How engaged did you feel during class sessions?", category: "Student Engagement", type: "Rating Scale", usageCount: 76, isFavorite: true },
-  { id: 6, question: "What suggestions do you have for improving this course?", category: "Course Feedback", type: "Open Text", usageCount: 145, isFavorite: false },
-]
+interface Question {
+  id: number
+  text: string
+  type: string
+  required: boolean
+  scale?: number
+  options?: string[]
+}
 
-const typeColors: Record<string, string> = {
-  "Rating Scale": "bg-blue-100 text-blue-700",
-  "Likert Scale": "bg-emerald-100 text-emerald-700",
-  "Open Text": "bg-violet-100 text-violet-700",
+interface Template {
+  id: number
+  name: string
+  description: string
+  isBase: boolean
+  questions: Question[]
+  lastModified: string
+  usageCount: number
+  status: "active" | "inactive"
+}
+
+const initialBaseTemplate: Template = {
+  id: 1,
+  name: "Base Template",
+  description: "Default feedback template for all teachers. This template serves as the foundation for course evaluation.",
+  isBase: true,
+  questions: [
+    { id: 1, text: "How would you rate the clarity of explanations in today's lecture?", type: "rating", required: true, scale: 5 },
+    { id: 2, text: "The pace of the course is appropriate for my learning needs.", type: "rating", required: true, scale: 5 },
+    { id: 3, text: "Do you feel comfortable asking questions during class?", type: "boolean", required: true },
+    { id: 4, text: "The instructor explains concepts in multiple ways to aid understanding.", type: "rating", required: false, scale: 5 },
+    { id: 5, text: "What suggestions do you have for improving the course?", type: "text", required: false },
+  ],
+  lastModified: "Admin",
+  usageCount: 156,
+  status: "active",
 }
 
 export default function QuestionBankPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [baseTemplate, setBaseTemplate] = useState<Template>(initialBaseTemplate)
+  const [expandedTemplate, setExpandedTemplate] = useState<number | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingQuestions, setEditingQuestions] = useState<Question[]>([])
+  const [editingName, setEditingName] = useState("")
+  const [editingDescription, setEditingDescription] = useState("")
 
-  const filteredQuestions = questions.filter((q) => {
-    const matchesSearch = q.question.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "all" || q.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  // New question form state
+  const [newQuestionText, setNewQuestionText] = useState("")
+  const [newQuestionType, setNewQuestionType] = useState("rating")
+  const [newQuestionRequired, setNewQuestionRequired] = useState(true)
+  const [newQuestionScale, setNewQuestionScale] = useState(5)
+  const [newQuestionOptions, setNewQuestionOptions] = useState<string[]>([""])
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false)
+
+  const getTypeIcon = (type: string) => {
+    const found = questionTypes.find((t) => t.id === type)
+    return found ? found.icon : FileText
+  }
+
+  const getTypeConfig = (type: string) => {
+    return questionTypes.find((t) => t.id === type) || questionTypes[0]
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return (
+          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1.5">
+            <CheckCircle2 className="w-3 h-3" />
+            Active
+          </Badge>
+        )
+      case "inactive":
+        return (
+          <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100 gap-1.5">
+            <Clock className="w-3 h-3" />
+            Inactive
+          </Badge>
+        )
+      default:
+        return null
+    }
+  }
+
+  const handleEditTemplate = () => {
+    setEditingQuestions([...baseTemplate.questions])
+    setEditingName(baseTemplate.name)
+    setEditingDescription(baseTemplate.description)
+    setIsEditModalOpen(true)
+  }
+
+  const handleSaveTemplate = () => {
+    setBaseTemplate((prev) => ({
+      ...prev,
+      name: editingName,
+      description: editingDescription,
+      questions: editingQuestions,
+      lastModified: "Just now",
+    }))
+    setIsEditModalOpen(false)
+    resetNewQuestionForm()
+  }
+
+  const handleToggleStatus = () => {
+    setBaseTemplate((prev) => ({
+      ...prev,
+      status: prev.status === "active" ? "inactive" : "active",
+    }))
+  }
+
+  const handleDeleteQuestion = (questionId: number) => {
+    setEditingQuestions((prev) => prev.filter((q) => q.id !== questionId))
+  }
+
+  const handleAddQuestion = () => {
+    if (!newQuestionText.trim()) return
+
+    const newQuestion: Question = {
+      id: Date.now(),
+      text: newQuestionText,
+      type: newQuestionType,
+      required: newQuestionRequired,
+      ...(newQuestionType === "rating" && { scale: newQuestionScale }),
+      ...(newQuestionType === "multiple" && { options: newQuestionOptions.filter((o) => o.trim()) }),
+    }
+
+    setEditingQuestions((prev) => [...prev, newQuestion])
+    resetNewQuestionForm()
+    setIsAddingQuestion(false)
+  }
+
+  const resetNewQuestionForm = () => {
+    setNewQuestionText("")
+    setNewQuestionType("rating")
+    setNewQuestionRequired(true)
+    setNewQuestionScale(5)
+    setNewQuestionOptions([""])
+    setIsAddingQuestion(false)
+  }
+
+  const handleAddOption = () => {
+    setNewQuestionOptions((prev) => [...prev, ""])
+  }
+
+  const handleUpdateOption = (index: number, value: string) => {
+    setNewQuestionOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)))
+  }
+
+  const handleRemoveOption = (index: number) => {
+    setNewQuestionOptions((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const stats = {
+    totalQuestions: baseTemplate.questions.length,
+    requiredQuestions: baseTemplate.questions.filter((q) => q.required).length,
+    totalUsage: baseTemplate.usageCount,
+  }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
-      <div className="fixed inset-0 bg-grid-small [mask-image:radial-gradient(ellipse_at_center,white,transparent_80%)]" />
-      <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="#8b5cf6" />
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Ambient Background Effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="meteor meteor-1" />
+        <div className="meteor meteor-2" />
+        <div className="meteor meteor-3" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-violet-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed" />
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed-2" />
+      </div>
 
-      <Sidebar role="super-admin" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        role="super-admin"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64">
-        <Header userName="Admin User" userEmail="admin@crs.com" onMenuClick={() => setSidebarOpen(true)} />
+      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64 z-10">
+        <Header
+          userName="Admin User"
+          userEmail="admin@crs.com"
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {/* Page Title */}
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 p-2.5 shadow-lg">
-                  <BookOpen className="h-5 w-5 text-white" />
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
+                    <Layers className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                    Question Bank
+                  </h1>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Question Bank</h1>
+                <p className="text-slate-500">
+                  Manage the base feedback template for all teachers
+                </p>
               </div>
-              <p className="text-slate-500 text-sm">Manage and organize your feedback questions</p>
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+                <Lock className="w-4 h-4 text-amber-600" />
+                <span className="text-sm text-amber-700 font-medium">Admin Only</span>
+              </div>
             </div>
-            <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white border-0">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New Question</span>
-            </Button>
-          </div>
 
-          {/* Categories */}
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">Categories</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.name === selectedCategory ? "all" : category.name)}
-                  className={`group p-4 rounded-xl border transition-all ${
-                    selectedCategory === category.name
-                      ? "border-violet-300 bg-violet-50 shadow-md"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm"
-                  }`}
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-50">
+                    <MessageSquare className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.totalQuestions}</p>
+                    <p className="text-xs text-slate-500">Total Questions</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-50">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.requiredQuestions}</p>
+                    <p className="text-xs text-slate-500">Required Questions</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-50">
+                    <Star className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.totalUsage}</p>
+                    <p className="text-xs text-slate-500">Times Used</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Base Template */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Base Template
+              </h2>
+              <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl border-2 border-indigo-200 overflow-hidden">
+                <div
+                  className="p-5 cursor-pointer"
+                  onClick={() => setExpandedTemplate(expandedTemplate === baseTemplate.id ? null : baseTemplate.id)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${category.color} flex items-center justify-center shadow-sm`}>
-                      <FolderOpen className="h-5 w-5 text-white" />
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
+                        <Shield className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="font-semibold text-lg text-slate-900">{baseTemplate.name}</h3>
+                          <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                            <Lock className="w-3 h-3 mr-1" />
+                            Admin
+                          </Badge>
+                          {getStatusBadge(baseTemplate.status)}
+                        </div>
+                        <p className="text-sm text-slate-600 mb-3">{baseTemplate.description}</p>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-slate-500">
+                            <span className="font-semibold text-slate-700">{baseTemplate.questions.length}</span> questions
+                          </span>
+                          <span className="text-slate-500">
+                            Used <span className="font-semibold text-slate-700">{baseTemplate.usageCount}</span> times
+                          </span>
+                          <span className="text-slate-500">
+                            Modified: <span className="font-semibold text-slate-700">{baseTemplate.lastModified}</span>
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-slate-900 truncate">{category.name}</p>
-                      <p className="text-xs text-slate-500">{category.count} questions</p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleToggleStatus()
+                        }}
+                        className="gap-1.5"
+                      >
+                        <Power className="w-4 h-4" />
+                        {baseTemplate.status === "active" ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditTemplate()
+                        }}
+                        className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit Template
+                      </Button>
+                      <button className="p-2 hover:bg-white/50 rounded-lg transition-colors">
+                        {expandedTemplate === baseTemplate.id ? (
+                          <ChevronDown className="w-5 h-5 text-slate-500" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-slate-500" />
+                        )}
+                      </button>
                     </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
+                </div>
 
-          {/* Questions List */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-input overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-slate-100">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search questions..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{filteredQuestions.length} questions</Badge>
-                  {selectedCategory !== "all" && (
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedCategory("all")} className="text-xs">
-                      Clear filter
-                    </Button>
-                  )}
-                </div>
+                {/* Expanded Questions */}
+                {expandedTemplate === baseTemplate.id && (
+                  <div className="border-t border-indigo-200 bg-white/50 p-5">
+                    <h4 className="text-sm font-medium text-slate-700 mb-3">Questions in this template:</h4>
+                    <div className="space-y-2">
+                      {baseTemplate.questions.map((question, index) => {
+                        const typeConfig = getTypeConfig(question.type)
+                        const TypeIcon = typeConfig.icon
+                        return (
+                          <div
+                            key={question.id}
+                            className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-200"
+                          >
+                            <span className="text-xs font-medium text-slate-400 mt-1">{index + 1}.</span>
+                            <div className={`p-1.5 rounded-lg ${typeConfig.bg}`}>
+                              <TypeIcon className={`w-4 h-4 ${typeConfig.color}`} />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm text-slate-700">{question.text}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className="text-xs text-slate-500">
+                                  {typeConfig.label}
+                                  {question.type === "rating" && question.scale && ` (1-${question.scale})`}
+                                </span>
+                                {question.required && (
+                                  <Badge variant="outline" className="text-xs py-0 h-5">Required</Badge>
+                                )}
+                              </div>
+                              {question.type === "multiple" && question.options && question.options.length > 0 && (
+                                <div className="mt-2 pl-2 border-l-2 border-slate-200">
+                                  <p className="text-xs text-slate-500 mb-1">Options:</p>
+                                  <ul className="text-xs text-slate-600 space-y-0.5">
+                                    {question.options.map((option, optIndex) => (
+                                      <li key={optIndex} className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                        {option}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="p-4 sm:p-6 space-y-3">
-              {filteredQuestions.map((question) => (
-                <div key={question.id} className="group p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-md transition-all">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                        <p className="text-sm font-medium text-slate-900 line-clamp-2">{question.question}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className="text-xs">{question.category}</Badge>
-                        <Badge className={`text-xs ${typeColors[question.type]}`}>{question.type}</Badge>
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          Used {question.usageCount} times
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 ${question.isFavorite ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}>
-                        <Star className={`h-4 w-4 ${question.isFavorite ? "fill-current" : ""}`} />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-blue-600">
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-amber-600">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+
+            {/* Info Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/60 p-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-xl bg-blue-50">
+                  <Shield className="w-6 h-6 text-blue-600" />
                 </div>
-              ))}
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-2">About the Base Template</h3>
+                  <p className="text-sm text-slate-600 mb-4">
+                    The base template serves as the foundation for all teacher feedback forms. Teachers can duplicate this template to create their own customized versions, but only administrators can modify the original base template.
+                  </p>
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      All teachers can view and duplicate this template
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      Changes to the base template affect all new duplications
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      Existing teacher copies remain unchanged
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-amber-500" />
+                      Only super admins can edit this template
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </main>
       </div>
+
+      {/* Edit Template Modal */}
+      {isEditModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => {
+              setIsEditModalOpen(false)
+              resetNewQuestionForm()
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div
+              className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-3xl w-full my-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 pt-6 pb-4 border-b border-slate-100 sticky top-0 bg-white rounded-t-3xl z-10">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200">
+                      <Pencil className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-slate-900">Edit Base Template</h2>
+                      <p className="text-sm text-slate-500">Modify the default feedback template</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsEditModalOpen(false)
+                      resetNewQuestionForm()
+                    }}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                {/* Template Info */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Template Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Description
+                    </label>
+                    <textarea
+                      value={editingDescription}
+                      onChange={(e) => setEditingDescription(e.target.value)}
+                      rows={2}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Questions List */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium text-slate-700">
+                      Questions ({editingQuestions.length})
+                    </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    {editingQuestions.map((question, index) => {
+                      const typeConfig = getTypeConfig(question.type)
+                      const TypeIcon = typeConfig.icon
+                      return (
+                        <div
+                          key={question.id}
+                          className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 group"
+                        >
+                          <div className="flex items-center gap-2 mt-1">
+                            <GripVertical className="w-4 h-4 text-slate-300" />
+                            <span className="text-xs font-medium text-slate-400">{index + 1}.</span>
+                          </div>
+                          <div className={`p-1.5 rounded-lg ${typeConfig.bg}`}>
+                            <TypeIcon className={`w-4 h-4 ${typeConfig.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-700">{question.text}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-xs text-slate-500">
+                                {typeConfig.label}
+                                {question.type === "rating" && question.scale && ` (1-${question.scale})`}
+                              </span>
+                              {question.required && (
+                                <Badge variant="outline" className="text-xs py-0 h-5">Required</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteQuestion(question.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Add Question Form */}
+                  {isAddingQuestion ? (
+                    <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-200 space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          Question Text
+                        </label>
+                        <textarea
+                          value={newQuestionText}
+                          onChange={(e) => setNewQuestionText(e.target.value)}
+                          placeholder="Enter your question..."
+                          rows={2}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm resize-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            Question Type
+                          </label>
+                          <select
+                            value={newQuestionType}
+                            onChange={(e) => setNewQuestionType(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                          >
+                            {questionTypes.map((type) => (
+                              <option key={type.id} value={type.id}>
+                                {type.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {newQuestionType === "rating" && (
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                              Scale (1 to)
+                            </label>
+                            <select
+                              value={newQuestionScale}
+                              onChange={(e) => setNewQuestionScale(Number(e.target.value))}
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      {newQuestionType === "multiple" && (
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            Options
+                          </label>
+                          <div className="space-y-2">
+                            {newQuestionOptions.map((option, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={option}
+                                  onChange={(e) => handleUpdateOption(index, e.target.value)}
+                                  placeholder={`Option ${index + 1}`}
+                                  className="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                                />
+                                {newQuestionOptions.length > 1 && (
+                                  <button
+                                    onClick={() => handleRemoveOption(index)}
+                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddOption}
+                              className="gap-1.5"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Add Option
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="required"
+                          checked={newQuestionRequired}
+                          onChange={(e) => setNewQuestionRequired(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="required" className="text-sm text-slate-700">
+                          Required question
+                        </label>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setIsAddingQuestion(false)
+                            resetNewQuestionForm()
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleAddQuestion}
+                          disabled={!newQuestionText.trim()}
+                          className="gap-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Question
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsAddingQuestion(true)}
+                      className="w-full mt-4 p-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Add New Question
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 sticky bottom-0 rounded-b-3xl">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditModalOpen(false)
+                    resetNewQuestionForm()
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveTemplate}
+                  className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

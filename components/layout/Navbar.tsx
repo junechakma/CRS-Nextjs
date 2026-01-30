@@ -32,7 +32,7 @@ export function Navbar({ onAboutClick }: NavbarProps) {
                     <Link href="/login" className="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
                         Sign In
                     </Link>
-                    <Link href="/register/university-admin">
+                    <Link href="/register">
                         <button className="px-4 py-2 text-sm font-medium text-white bg-[#468cfe] hover:bg-[#3a7be0] rounded-full shadow-lg shadow-blue-200 hover:shadow-xl transition-all">
                             Get Started Free
                         </button>
