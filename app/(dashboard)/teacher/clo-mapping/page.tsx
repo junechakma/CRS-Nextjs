@@ -303,11 +303,10 @@ export default function CLOMappingPage() {
                 <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
                   <button
                     onClick={() => setSelectedCourse("all")}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                      selectedCourse === "all"
+                    className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${selectedCourse === "all"
                         ? "bg-indigo-100 text-indigo-700"
                         : "text-slate-600 hover:bg-slate-100"
-                    }`}
+                      }`}
                   >
                     All Courses
                   </button>
@@ -315,11 +314,10 @@ export default function CLOMappingPage() {
                     <button
                       key={course.id}
                       onClick={() => setSelectedCourse(course.id.toString())}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                        selectedCourse === course.id.toString()
+                      className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${selectedCourse === course.id.toString()
                           ? "bg-indigo-100 text-indigo-700"
                           : "text-slate-600 hover:bg-slate-100"
-                      }`}
+                        }`}
                     >
                       {course.code}
                     </button>
@@ -358,21 +356,19 @@ export default function CLOMappingPage() {
                     {group.clos.map((clo) => (
                       <div
                         key={clo.id}
-                        className={`bg-white rounded-2xl border transition-all duration-300 hover:shadow-lg ${
-                          clo.status === "active"
+                        className={`bg-white rounded-2xl border transition-all duration-300 hover:shadow-lg ${clo.status === "active"
                             ? "border-slate-200/60 hover:border-indigo-300"
                             : "border-slate-200 bg-slate-50/50"
-                        }`}
+                          }`}
                       >
                         <div className="p-5">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-2">
                               <Badge
-                                className={`${
-                                  clo.status === "active"
+                                className={`${clo.status === "active"
                                     ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-100"
                                     : "bg-slate-100 text-slate-600 hover:bg-slate-100"
-                                }`}
+                                  }`}
                               >
                                 {clo.code}
                               </Badge>
