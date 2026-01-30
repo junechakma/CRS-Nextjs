@@ -1,25 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar/sidebar"
 import { Header } from "@/components/layout/header/header"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CreateCourseModal } from "@/components/teacher/create-course-modal"
+import { EditCourseModal } from "@/components/teacher/edit-course-modal"
 import {
   GraduationCap,
   Plus,
   Users,
-  Calendar,
-  BarChart3,
   Search,
-  Filter,
   MoreVertical,
   BookOpen,
   Clock,
-  TrendingUp,
   ChevronRight,
   Star,
   MessageSquare,
+  Pencil,
+  Trash2,
+  Play,
+  Archive,
+  Eye,
 } from "lucide-react"
 
 const semesters = [
@@ -28,7 +30,7 @@ const semesters = [
   { id: "spring-2024", name: "Spring 2024", active: false },
 ]
 
-const courses = [
+const initialCourses = [
   {
     id: 1,
     name: "Introduction to Machine Learning",
@@ -116,6 +118,23 @@ export default function CoursesPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [selectedSemester, setSelectedSemester] = useState("spring-2025")
   const [searchQuery, setSearchQuery] = useState("")
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<typeof initialCourses[0] | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+  const [courses, setCourses] = useState(initialCourses)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   const filteredCourses = courses.filter((course) => {
     const matchesSemester =
@@ -126,6 +145,45 @@ export default function CoursesPage() {
       course.code.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesSemester && matchesSearch
   })
+
+  const handleEdit = (courseId: number) => {
+    const course = courses.find(c => c.id === courseId)
+    if (course) {
+      setEditingCourse(course)
+      setIsEditModalOpen(true)
+    }
+    setOpenDropdown(null)
+  }
+
+  const handleEditSubmit = (data: { id: number; name: string; code: string; semester: string; color: string }) => {
+    setCourses(prev =>
+      prev.map(course =>
+        course.id === data.id
+          ? {
+              ...course,
+              name: data.name,
+              code: data.code,
+              semester: semesters.find(s => s.id === data.semester)?.name || course.semester,
+              color: data.color,
+            }
+          : course
+      )
+    )
+  }
+
+  const handleStatusChange = (courseId: number, newStatus: string) => {
+    setCourses(prev =>
+      prev.map(course =>
+        course.id === courseId ? { ...course, status: newStatus } : course
+      )
+    )
+    setOpenDropdown(null)
+  }
+
+  const handleDelete = (courseId: number) => {
+    setCourses(prev => prev.filter(course => course.id !== courseId))
+    setOpenDropdown(null)
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
@@ -169,7 +227,10 @@ export default function CoursesPage() {
                   Manage your courses and track student engagement
                 </p>
               </div>
-              <Button className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0">
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0"
+              >
                 <Plus className="w-5 h-5" />
                 Create Course
               </Button>
@@ -231,7 +292,7 @@ export default function CoursesPage() {
                 return (
                   <div
                     key={course.id}
-                    className="gradient-border-card card-hover-lift group cursor-pointer"
+                    className="gradient-border-card card-hover-lift group"
                   >
                     <div className="card-inner p-6">
                       {/* Header */}
@@ -242,15 +303,86 @@ export default function CoursesPage() {
                           <BookOpen className={`w-6 h-6 ${colors.text}`} />
                         </div>
                         <div className="flex items-center gap-2">
-                          {course.status === "active" && (
+                          {course.status === "active" ? (
                             <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
                               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                               Active
                             </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                              <Archive className="w-3 h-3" />
+                              Archived
+                            </span>
                           )}
-                          <button className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                            <MoreVertical className="w-4 h-4 text-slate-400" />
-                          </button>
+
+                          {/* Dropdown Menu */}
+                          <div className="relative" ref={openDropdown === course.id ? dropdownRef : null}>
+                            <button
+                              onClick={() => setOpenDropdown(openDropdown === course.id ? null : course.id)}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                              <MoreVertical className="w-4 h-4 text-slate-400" />
+                            </button>
+
+                            {openDropdown === course.id && (
+                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                {/* Edit */}
+                                <button
+                                  onClick={() => handleEdit(course.id)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                >
+                                  <Pencil className="w-4 h-4 text-slate-400" />
+                                  Edit Course
+                                </button>
+
+                                {/* View Sessions */}
+                                <button
+                                  onClick={() => {
+                                    console.log("View sessions for:", course.id)
+                                    setOpenDropdown(null)
+                                  }}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                >
+                                  <Eye className="w-4 h-4 text-slate-400" />
+                                  View Sessions
+                                </button>
+
+                                {/* Status Change */}
+                                <div className="border-t border-slate-100 my-1" />
+                                <p className="px-4 py-1.5 text-xs font-medium text-slate-400 uppercase">Change Status</p>
+
+                                {course.status !== "active" && (
+                                  <button
+                                    onClick={() => handleStatusChange(course.id, "active")}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors"
+                                  >
+                                    <Play className="w-4 h-4 text-emerald-500" />
+                                    Set as Active
+                                  </button>
+                                )}
+
+                                {course.status !== "archived" && (
+                                  <button
+                                    onClick={() => handleStatusChange(course.id, "archived")}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 flex items-center gap-2.5 transition-colors"
+                                  >
+                                    <Archive className="w-4 h-4 text-slate-400" />
+                                    Archive Course
+                                  </button>
+                                )}
+
+                                {/* Delete */}
+                                <div className="border-t border-slate-100 my-1" />
+                                <button
+                                  onClick={() => handleDelete(course.id)}
+                                  className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Delete Course
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -308,7 +440,7 @@ export default function CoursesPage() {
                           {course.lastActivity}
                         </span>
                         <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          View Details
+                          View Sessions
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </div>
@@ -318,7 +450,10 @@ export default function CoursesPage() {
               })}
 
               {/* Add Course Card */}
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer group min-h-[280px]">
+              <div
+                onClick={() => setIsCreateModalOpen(true)}
+                className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer group min-h-[280px]"
+              >
                 <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center mb-4 transition-colors">
                   <Plus className="w-7 h-7 text-slate-400 group-hover:text-indigo-600 transition-colors" />
                 </div>
@@ -333,6 +468,29 @@ export default function CoursesPage() {
           </div>
         </main>
       </div>
+
+      {/* Create Course Modal */}
+      <CreateCourseModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        semesters={semesters}
+        onSubmit={(data) => {
+          console.log("New course:", data)
+          // Handle the new course data here
+        }}
+      />
+
+      {/* Edit Course Modal */}
+      <EditCourseModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingCourse(null)
+        }}
+        semesters={semesters}
+        course={editingCourse}
+        onSubmit={handleEditSubmit}
+      />
     </div>
   )
 }

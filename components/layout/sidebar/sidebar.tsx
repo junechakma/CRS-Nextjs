@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Calendar,
   HelpCircle,
+  CalendarDays,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -31,6 +32,7 @@ const superAdminNavigation = [
 
 const teacherNavigation = [
   { name: "Dashboard", href: "/teacher", icon: LayoutDashboard },
+  { name: "Semesters", href: "/teacher/semesters", icon: CalendarDays },
   { name: "Courses", href: "/teacher/courses", icon: GraduationCap },
   { name: "Sessions", href: "/teacher/sessions", icon: Calendar },
   { name: "Questions", href: "/teacher/questions", icon: HelpCircle },

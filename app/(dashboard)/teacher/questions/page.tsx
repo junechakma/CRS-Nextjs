@@ -1,185 +1,184 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar/sidebar"
 import { Header } from "@/components/layout/header/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { TemplateModal } from "@/components/teacher/template-modal"
 import {
   FileText,
   Plus,
   Search,
-  Filter,
   MoreVertical,
   Star,
   Copy,
   Edit3,
   Trash2,
-  CheckCircle,
   List,
   MessageSquare,
   ToggleLeft,
   Hash,
   ChevronRight,
-  Folder,
-  FolderOpen,
-  Sparkles,
-  BookOpen,
-  Library,
+  ChevronDown,
+  Layers,
+  Shield,
+  Pencil,
+  Lock,
 } from "lucide-react"
 
 const questionTypes = [
-  { id: "rating", label: "Rating Scale", icon: Star },
-  { id: "text", label: "Open Text", icon: MessageSquare },
-  { id: "multiple", label: "Multiple Choice", icon: List },
-  { id: "boolean", label: "Yes/No", icon: ToggleLeft },
-  { id: "numeric", label: "Numeric", icon: Hash },
+  { id: "rating", label: "Rating Scale", icon: Star, color: "text-amber-500", bg: "bg-amber-50" },
+  { id: "text", label: "Open Text", icon: MessageSquare, color: "text-blue-500", bg: "bg-blue-50" },
+  { id: "multiple", label: "Multiple Choice", icon: List, color: "text-violet-500", bg: "bg-violet-50" },
+  { id: "boolean", label: "Yes/No", icon: ToggleLeft, color: "text-emerald-500", bg: "bg-emerald-50" },
+  { id: "numeric", label: "Numeric", icon: Hash, color: "text-rose-500", bg: "bg-rose-50" },
 ]
 
-const categories = [
-  { id: "teaching", name: "Teaching Quality", count: 12 },
-  { id: "content", name: "Course Content", count: 8 },
-  { id: "assessment", name: "Assessment & Feedback", count: 6 },
-  { id: "resources", name: "Learning Resources", count: 5 },
-  { id: "engagement", name: "Student Engagement", count: 9 },
-]
+interface Question {
+  id: number
+  text: string
+  type: string
+  required: boolean
+}
 
-const questions = [
+interface Template {
+  id: number
+  name: string
+  description: string
+  isBase: boolean
+  questions: Question[]
+  lastModified: string
+  usageCount: number
+}
+
+const initialTemplates: Template[] = [
   {
     id: 1,
-    text: "How would you rate the clarity of explanations in today's lecture?",
-    type: "rating",
-    category: "Teaching Quality",
-    usageCount: 45,
-    isCustom: true,
-    lastUsed: "2 days ago",
-    clo: "CLO-2",
+    name: "Base Template",
+    description: "Default feedback template created by admin. Contains standard questions for course evaluation.",
+    isBase: true,
+    questions: [
+      { id: 1, text: "How would you rate the clarity of explanations in today's lecture?", type: "rating", required: true },
+      { id: 2, text: "The pace of the course is appropriate for my learning needs.", type: "rating", required: true },
+      { id: 3, text: "Do you feel comfortable asking questions during class?", type: "boolean", required: true },
+      { id: 4, text: "The instructor explains concepts in multiple ways to aid understanding.", type: "rating", required: false },
+      { id: 5, text: "What suggestions do you have for improving the course?", type: "text", required: false },
+    ],
+    lastModified: "Admin",
+    usageCount: 156,
   },
   {
     id: 2,
-    text: "What topics would you like more clarification on?",
-    type: "text",
-    category: "Course Content",
-    usageCount: 32,
-    isCustom: true,
-    lastUsed: "1 week ago",
-    clo: "CLO-1",
+    name: "Mid-Semester Review",
+    description: "Comprehensive feedback template for mid-semester course evaluation.",
+    isBase: false,
+    questions: [
+      { id: 1, text: "How satisfied are you with the course content so far?", type: "rating", required: true },
+      { id: 2, text: "Which topics have you found most challenging?", type: "text", required: true },
+      { id: 3, text: "The assignments help reinforce the concepts taught in class.", type: "rating", required: true },
+      { id: 4, text: "Would you recommend this course to other students?", type: "boolean", required: false },
+    ],
+    lastModified: "2 days ago",
+    usageCount: 24,
   },
   {
     id: 3,
-    text: "The pace of the course is appropriate for my learning needs.",
-    type: "rating",
-    category: "Teaching Quality",
-    usageCount: 28,
-    isCustom: false,
-    lastUsed: "3 days ago",
-    clo: "CLO-3",
+    name: "Quick Session Feedback",
+    description: "Short template for quick feedback after each class session.",
+    isBase: false,
+    questions: [
+      { id: 1, text: "How would you rate today's session?", type: "rating", required: true },
+      { id: 2, text: "What was the most valuable part of today's class?", type: "text", required: false },
+      { id: 3, text: "Any topics you'd like more clarification on?", type: "text", required: false },
+    ],
+    lastModified: "1 week ago",
+    usageCount: 45,
   },
   {
     id: 4,
-    text: "Which learning resources have you found most helpful?",
-    type: "multiple",
-    category: "Learning Resources",
-    usageCount: 15,
-    isCustom: true,
-    lastUsed: "5 days ago",
-    clo: "CLO-4",
-  },
-  {
-    id: 5,
-    text: "Do you feel comfortable asking questions during class?",
-    type: "boolean",
-    category: "Student Engagement",
-    usageCount: 52,
-    isCustom: false,
-    lastUsed: "1 day ago",
-    clo: "CLO-5",
-  },
-  {
-    id: 6,
-    text: "On a scale of 1-10, how confident do you feel about the exam topics?",
-    type: "numeric",
-    category: "Assessment & Feedback",
+    name: "Lab Session Evaluation",
+    description: "Feedback template specifically designed for laboratory sessions.",
+    isBase: false,
+    questions: [
+      { id: 1, text: "The lab instructions were clear and easy to follow.", type: "rating", required: true },
+      { id: 2, text: "Did you complete the lab exercises?", type: "boolean", required: true },
+      { id: 3, text: "How confident do you feel about applying today's concepts?", type: "numeric", required: true },
+      { id: 4, text: "What equipment or resources would improve the lab experience?", type: "text", required: false },
+      { id: 5, text: "Which part of the lab was most challenging?", type: "multiple", required: false },
+    ],
+    lastModified: "5 days ago",
     usageCount: 18,
-    isCustom: true,
-    lastUsed: "4 days ago",
-    clo: "CLO-2",
-  },
-  {
-    id: 7,
-    text: "The instructor explains concepts in multiple ways to aid understanding.",
-    type: "rating",
-    category: "Teaching Quality",
-    usageCount: 67,
-    isCustom: false,
-    lastUsed: "Today",
-    clo: "CLO-1",
-  },
-  {
-    id: 8,
-    text: "What suggestions do you have for improving the course?",
-    type: "text",
-    category: "Course Content",
-    usageCount: 89,
-    isCustom: false,
-    lastUsed: "Today",
-    clo: null,
-  },
-]
-
-const stats = [
-  {
-    title: "My Questions",
-    value: "24",
-    icon: FileText,
-    iconBg: "bg-indigo-50",
-    iconColor: "text-indigo-600",
-  },
-  {
-    title: "Common Bank",
-    value: "156",
-    icon: Library,
-    iconBg: "bg-violet-50",
-    iconColor: "text-violet-600",
-  },
-  {
-    title: "Used This Month",
-    value: "42",
-    icon: CheckCircle,
-    iconBg: "bg-emerald-50",
-    iconColor: "text-emerald-600",
-  },
-  {
-    title: "CLO Mapped",
-    value: "89%",
-    icon: Sparkles,
-    iconBg: "bg-amber-50",
-    iconColor: "text-amber-600",
   },
 ]
 
 export default function QuestionsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("my")
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<Template[]>(initialTemplates)
   const [searchQuery, setSearchQuery] = useState("")
+  const [expandedTemplate, setExpandedTemplate] = useState<number | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const filteredTemplates = templates.filter((template) =>
+    template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    template.description.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const baseTemplate = templates.find(t => t.isBase)
+  const customTemplates = filteredTemplates.filter(t => !t.isBase)
 
   const getTypeIcon = (type: string) => {
     const found = questionTypes.find((t) => t.id === type)
     return found ? found.icon : FileText
   }
 
-  const getTypeLabel = (type: string) => {
-    const found = questionTypes.find((t) => t.id === type)
-    return found ? found.label : type
+  const getTypeConfig = (type: string) => {
+    return questionTypes.find((t) => t.id === type) || questionTypes[0]
   }
 
-  const filteredQuestions = questions.filter((q) => {
-    const matchesTab = activeTab === "all" || (activeTab === "my" && q.isCustom) || (activeTab === "common" && !q.isCustom)
-    const matchesCategory = !selectedCategory || q.category === selectedCategory
-    const matchesSearch = q.text.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesTab && matchesCategory && matchesSearch
-  })
+  const handleDelete = (templateId: number) => {
+    setTemplates(prev => prev.filter(t => t.id !== templateId))
+    setOpenDropdown(null)
+  }
+
+  const handleDuplicate = (template: Template) => {
+    const newTemplate: Template = {
+      ...template,
+      id: Date.now(),
+      name: `${template.name} (Copy)`,
+      isBase: false,
+      lastModified: "Just now",
+      usageCount: 0,
+    }
+    setTemplates(prev => [...prev, newTemplate])
+    setOpenDropdown(null)
+  }
+
+  const handleEdit = (template: Template) => {
+    setEditingTemplate(template)
+    setOpenDropdown(null)
+  }
+
+  const stats = {
+    totalTemplates: templates.length,
+    customTemplates: templates.filter(t => !t.isBase).length,
+    totalQuestions: templates.reduce((acc, t) => acc + t.questions.length, 0),
+    totalUsage: templates.reduce((acc, t) => acc + t.usageCount, 0),
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
@@ -213,246 +212,395 @@ export default function QuestionsPage() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
-                    <FileText className="w-6 h-6 text-white" />
+                    <Layers className="w-6 h-6 text-white" />
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                    Question Bank
+                    Question Templates
                   </h1>
                 </div>
                 <p className="text-slate-500">
-                  Create and manage feedback questions for your sessions
+                  Create and manage feedback templates for your sessions
                 </p>
               </div>
-              <Button className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0">
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0"
+              >
                 <Plus className="w-5 h-5" />
-                Create Question
+                Create Template
               </Button>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat, index) => (
-                <div key={index} className="gradient-border-card card-hover-lift group">
-                  <div className="card-inner p-5">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-xl ${stat.iconBg}`}>
-                        <stat.icon className={`w-5 h-5 ${stat.iconColor}`} />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-slate-900">
-                          {stat.value}
-                        </h3>
-                        <p className="text-sm text-slate-500">{stat.title}</p>
-                      </div>
-                    </div>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-50">
+                    <Layers className="w-5 h-5 text-indigo-600" />
                   </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Sidebar - Categories */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 sticky top-4">
-                  <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                    <Folder className="w-4 h-4 text-slate-500" />
-                    Categories
-                  </h3>
-                  <div className="space-y-1">
-                    <button
-                      onClick={() => setSelectedCategory(null)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                        !selectedCategory
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <span>All Categories</span>
-                      <span className="text-xs font-medium bg-slate-100 px-2 py-0.5 rounded-full">
-                        {questions.length}
-                      </span>
-                    </button>
-                    {categories.map((category) => (
-                      <button
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category.name)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                          selectedCategory === category.name
-                            ? "bg-indigo-50 text-indigo-700"
-                            : "text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        <span className="truncate">{category.name}</span>
-                        <span className="text-xs font-medium bg-slate-100 px-2 py-0.5 rounded-full">
-                          {category.count}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Question Types */}
-                  <h3 className="font-semibold text-slate-900 mt-6 mb-4 flex items-center gap-2">
-                    <List className="w-4 h-4 text-slate-500" />
-                    Question Types
-                  </h3>
-                  <div className="space-y-2">
-                    {questionTypes.map((type) => (
-                      <div
-                        key={type.id}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600"
-                      >
-                        <type.icon className="w-4 h-4 text-slate-400" />
-                        <span>{type.label}</span>
-                      </div>
-                    ))}
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.totalTemplates}</p>
+                    <p className="text-xs text-slate-500">Total Templates</p>
                   </div>
                 </div>
               </div>
-
-              {/* Main Content - Questions */}
-              <div className="lg:col-span-3 space-y-4">
-                {/* Tabs & Search */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                    <div className="flex gap-2">
-                      {[
-                        { id: "my", label: "My Questions" },
-                        { id: "common", label: "Common Bank" },
-                        { id: "all", label: "All" },
-                      ].map((tab) => (
-                        <button
-                          key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                            activeTab === tab.id
-                              ? "bg-indigo-100 text-indigo-700"
-                              : "text-slate-600 hover:bg-slate-100"
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="relative w-full sm:w-auto">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search questions..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full sm:w-72 pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
-                      />
-                    </div>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-violet-50">
+                    <FileText className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.customTemplates}</p>
+                    <p className="text-xs text-slate-500">My Templates</p>
                   </div>
                 </div>
+              </div>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-50">
+                    <MessageSquare className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.totalQuestions}</p>
+                    <p className="text-xs text-slate-500">Total Questions</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-50">
+                    <Star className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{stats.totalUsage}</p>
+                    <p className="text-xs text-slate-500">Total Usage</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                {/* Questions List */}
-                <div className="space-y-3">
-                  {filteredQuestions.map((question) => {
-                    const TypeIcon = getTypeIcon(question.type)
-                    return (
-                      <div
-                        key={question.id}
-                        className="bg-white rounded-2xl border border-slate-200/60 p-5 hover:border-indigo-200 hover:shadow-md transition-all group cursor-pointer"
-                      >
-                        <div className="flex items-start gap-4">
-                          {/* Type Icon */}
-                          <div className="p-2.5 rounded-xl bg-slate-50 group-hover:bg-indigo-50 transition-colors shrink-0">
-                            <TypeIcon className="w-5 h-5 text-slate-500 group-hover:text-indigo-600 transition-colors" />
+            {/* Search */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Base Template */}
+            {baseTemplate && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Base Template
+                </h2>
+                <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl border-2 border-indigo-200 overflow-hidden">
+                  <div
+                    className="p-5 cursor-pointer"
+                    onClick={() => setExpandedTemplate(expandedTemplate === baseTemplate.id ? null : baseTemplate.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
+                          <Shield className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-lg text-slate-900">{baseTemplate.name}</h3>
+                            <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                              <Lock className="w-3 h-3 mr-1" />
+                              Admin
+                            </Badge>
                           </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-slate-900 font-medium mb-2 group-hover:text-indigo-600 transition-colors">
-                              {question.text}
-                            </p>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <Badge variant="outline" className="text-xs">
-                                {getTypeLabel(question.type)}
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className="text-xs bg-slate-50"
-                              >
-                                {question.category}
-                              </Badge>
-                              {question.clo && (
-                                <Badge className="text-xs bg-violet-100 text-violet-700 hover:bg-violet-100">
-                                  <Sparkles className="w-3 h-3 mr-1" />
-                                  {question.clo}
-                                </Badge>
-                              )}
-                              {question.isCustom ? (
-                                <span className="text-xs text-indigo-600 font-medium">
-                                  Custom
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-500">
-                                  Common Bank
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Stats & Actions */}
-                          <div className="flex items-center gap-4 shrink-0">
-                            <div className="text-right hidden sm:block">
-                              <p className="text-sm font-semibold text-slate-900">
-                                {question.usageCount}
-                              </p>
-                              <p className="text-xs text-slate-500">uses</p>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                                <Copy className="w-4 h-4 text-slate-500" />
-                              </button>
-                              {question.isCustom && (
-                                <>
-                                  <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                                    <Edit3 className="w-4 h-4 text-slate-500" />
-                                  </button>
-                                  <button className="p-2 rounded-lg hover:bg-red-50 transition-colors">
-                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                          <p className="text-sm text-slate-600 mb-3">{baseTemplate.description}</p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-slate-500">
+                              <span className="font-semibold text-slate-700">{baseTemplate.questions.length}</span> questions
+                            </span>
+                            <span className="text-slate-500">
+                              Used <span className="font-semibold text-slate-700">{baseTemplate.usageCount}</span> times
+                            </span>
                           </div>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-
-                {/* Empty State */}
-                {filteredQuestions.length === 0 && (
-                  <div className="bg-white rounded-2xl border border-slate-200/60 p-12 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <FileText className="w-8 h-8 text-slate-400" />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDuplicate(baseTemplate)
+                          }}
+                          className="gap-1.5"
+                        >
+                          <Copy className="w-4 h-4" />
+                          Duplicate
+                        </Button>
+                        <button className="p-2 hover:bg-white/50 rounded-lg transition-colors">
+                          {expandedTemplate === baseTemplate.id ? (
+                            <ChevronDown className="w-5 h-5 text-slate-500" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-slate-500" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="font-semibold text-slate-900 mb-2">
-                      No questions found
-                    </h3>
-                    <p className="text-sm text-slate-500 mb-4">
-                      Try adjusting your search or filters
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => {
-                        setSearchQuery("")
-                        setSelectedCategory(null)
-                      }}
-                    >
-                      Clear filters
-                    </Button>
                   </div>
-                )}
+
+                  {/* Expanded Questions */}
+                  {expandedTemplate === baseTemplate.id && (
+                    <div className="border-t border-indigo-200 bg-white/50 p-5">
+                      <h4 className="text-sm font-medium text-slate-700 mb-3">Questions in this template:</h4>
+                      <div className="space-y-2">
+                        {baseTemplate.questions.map((question, index) => {
+                          const typeConfig = getTypeConfig(question.type)
+                          const TypeIcon = typeConfig.icon
+                          return (
+                            <div
+                              key={question.id}
+                              className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-200"
+                            >
+                              <span className="text-xs font-medium text-slate-400 mt-1">{index + 1}.</span>
+                              <div className={`p-1.5 rounded-lg ${typeConfig.bg}`}>
+                                <TypeIcon className={`w-4 h-4 ${typeConfig.color}`} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm text-slate-700">{question.text}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs text-slate-500">{typeConfig.label}</span>
+                                  {question.required && (
+                                    <Badge variant="outline" className="text-xs py-0 h-5">Required</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
+
+            {/* My Templates */}
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                My Templates
+              </h2>
+
+              {customTemplates.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200/60 p-12 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <Layers className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="font-semibold text-slate-900 mb-2">No custom templates yet</h3>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Create your first template or duplicate the base template to get started
+                  </p>
+                  <Button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create Template
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {customTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="bg-white rounded-2xl border border-slate-200/60 overflow-hidden hover:border-indigo-200 hover:shadow-md transition-all"
+                    >
+                      <div
+                        className="p-5 cursor-pointer"
+                        onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-4">
+                            <div className="p-3 rounded-xl bg-slate-100">
+                              <FileText className="w-6 h-6 text-slate-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg text-slate-900 mb-1">{template.name}</h3>
+                              <p className="text-sm text-slate-500 mb-3">{template.description}</p>
+                              <div className="flex items-center gap-4 text-sm">
+                                <span className="text-slate-500">
+                                  <span className="font-semibold text-slate-700">{template.questions.length}</span> questions
+                                </span>
+                                <span className="text-slate-500">
+                                  Used <span className="font-semibold text-slate-700">{template.usageCount}</span> times
+                                </span>
+                                <span className="text-slate-400">
+                                  Modified {template.lastModified}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* Dropdown */}
+                            <div className="relative" ref={openDropdown === template.id ? dropdownRef : null}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenDropdown(openDropdown === template.id ? null : template.id)
+                                }}
+                                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                              >
+                                <MoreVertical className="w-5 h-5 text-slate-400" />
+                              </button>
+
+                              {openDropdown === template.id && (
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleEdit(template)
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                  >
+                                    <Pencil className="w-4 h-4 text-slate-400" />
+                                    Edit Template
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDuplicate(template)
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                  >
+                                    <Copy className="w-4 h-4 text-slate-400" />
+                                    Duplicate
+                                  </button>
+                                  <div className="border-t border-slate-100 my-1" />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDelete(template.id)
+                                    }}
+                                    className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete Template
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            <button className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                              {expandedTemplate === template.id ? (
+                                <ChevronDown className="w-5 h-5 text-slate-500" />
+                              ) : (
+                                <ChevronRight className="w-5 h-5 text-slate-500" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Questions */}
+                      {expandedTemplate === template.id && (
+                        <div className="border-t border-slate-100 bg-slate-50/50 p-5">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-medium text-slate-700">Questions in this template:</h4>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(template)}
+                              className="gap-1.5"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              Edit Questions
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {template.questions.map((question, index) => {
+                              const typeConfig = getTypeConfig(question.type)
+                              const TypeIcon = typeConfig.icon
+                              return (
+                                <div
+                                  key={question.id}
+                                  className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-200"
+                                >
+                                  <span className="text-xs font-medium text-slate-400 mt-1">{index + 1}.</span>
+                                  <div className={`p-1.5 rounded-lg ${typeConfig.bg}`}>
+                                    <TypeIcon className={`w-4 h-4 ${typeConfig.color}`} />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm text-slate-700">{question.text}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs text-slate-500">{typeConfig.label}</span>
+                                      {question.required && (
+                                        <Badge variant="outline" className="text-xs py-0 h-5">Required</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add Template Card */}
+            <div
+              onClick={() => setIsCreateModalOpen(true)}
+              className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer group"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center mb-4 transition-colors">
+                <Plus className="w-7 h-7 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+              </div>
+              <h3 className="font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors mb-1">
+                Create New Template
+              </h3>
+              <p className="text-sm text-slate-500">
+                Build a custom question template for your sessions
+              </p>
             </div>
           </div>
         </main>
       </div>
+
+      {/* Create/Edit Template Modal */}
+      <TemplateModal
+        isOpen={isCreateModalOpen || !!editingTemplate}
+        onClose={() => {
+          setIsCreateModalOpen(false)
+          setEditingTemplate(null)
+        }}
+        template={editingTemplate}
+        onSubmit={(data) => {
+          if (editingTemplate) {
+            setTemplates(prev =>
+              prev.map(t => t.id === editingTemplate.id ? { ...t, ...data, lastModified: "Just now" } : t)
+            )
+          } else {
+            const newTemplate: Template = {
+              id: Date.now(),
+              ...data,
+              isBase: false,
+              lastModified: "Just now",
+              usageCount: 0,
+            }
+            setTemplates(prev => [...prev, newTemplate])
+          }
+          setIsCreateModalOpen(false)
+          setEditingTemplate(null)
+        }}
+      />
     </div>
   )
 }
