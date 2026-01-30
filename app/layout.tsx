@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Sora, IBM_Plex_Sans } from "next/font/google";
+import { Sora, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const sora = Sora({
@@ -12,6 +12,12 @@ const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["300", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -27,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sora.variable} ${ibmPlexSans.variable} antialiased`}
+        className={`${sora.variable} ${ibmPlexSans.variable} ${spaceGrotesk.variable} antialiased`}
       >
         {children}
       </body>

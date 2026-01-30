@@ -27,6 +27,75 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 
+// Text Scramble Logic
+class TextScramble {
+  el: HTMLElement
+  chars: string
+  queue: { from: string; to: string; start: number; end: number; char?: string }[]
+  frame: number
+  frameRequest: number
+  resolve: (value?: unknown) => void
+
+  constructor(el: HTMLElement) {
+    this.el = el
+    this.chars = '!<>-_\\/[]{}—=+*^?#________'
+    this.update = this.update.bind(this)
+    this.queue = []
+    this.frame = 0
+    this.frameRequest = 0
+    this.resolve = () => { }
+  }
+
+  setText(newText: string) {
+    const oldText = this.el.innerText
+    const length = Math.max(oldText.length, newText.length)
+    const promise = new Promise((resolve) => this.resolve = resolve)
+    this.queue = []
+    for (let i = 0; i < length; i++) {
+      const from = oldText[i] || ''
+      const to = newText[i] || ''
+      const start = Math.floor(Math.random() * 40)
+      const end = start + Math.floor(Math.random() * 40)
+      this.queue.push({ from, to, start, end })
+    }
+    cancelAnimationFrame(this.frameRequest)
+    this.frame = 0
+    this.update()
+    return promise
+  }
+
+  update() {
+    let output = ''
+    let complete = 0
+    for (let i = 0, n = this.queue.length; i < n; i++) {
+      let { from, to, start, end, char } = this.queue[i]
+      if (this.frame >= end) {
+        complete++
+        output += to
+      } else if (this.frame >= start) {
+        if (!char || Math.random() < 0.28) {
+          char = this.randomChar()
+          this.queue[i].char = char
+        }
+        output += `<span className="text-slate-400 opacity-50">${char}</span>`
+      } else {
+        output += from
+      }
+    }
+    this.el.innerHTML = output
+    if (complete === this.queue.length) {
+      this.resolve()
+    } else {
+      this.frameRequest = requestAnimationFrame(this.update)
+      this.frame++
+    }
+  }
+
+  randomChar() {
+    return this.chars[Math.floor(Math.random() * this.chars.length)]
+  }
+}
+
 export default function Home() {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -84,6 +153,34 @@ export default function Home() {
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
     return () => observer.disconnect()
+  }, [])
+
+  // Hero Scramble Effect
+  useEffect(() => {
+    const el = document.getElementById('scramble-text')
+    if (el) {
+      const fx = new TextScramble(el)
+      const phrases = [
+        'Class Response System',
+        'Capture Every Thought',
+        'Measure Every Moment'
+      ]
+      let counter = 0
+      let isSubscribed = true
+
+      const next = () => {
+        if (!isSubscribed) return
+        fx.setText(phrases[counter]).then(() => {
+          if (isSubscribed) {
+            setTimeout(next, 3000)
+          }
+        })
+        counter = (counter + 1) % phrases.length
+      }
+
+      next()
+      return () => { isSubscribed = false }
+    }
   }, [])
 
   return (
@@ -171,6 +268,10 @@ export default function Home() {
           transform-style: preserve-3d;
           transition: transform 0.3s ease;
         }
+
+        .font-display {
+          font-family: var(--font-space-grotesk), sans-serif;
+        }
       `}</style>
 
       {/* Navigation */}
@@ -179,7 +280,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2">
               <Image src="/assets/logo.png" alt="Logo" width={32} height={32} className='rounded-sm' />
-              <span className="font-bold text-xl tracking-tight text-slate-900">CRS</span>
+              <span className="font-display font-bold text-xl tracking-tight text-slate-900">CRS</span>
             </Link>
           </div>
 
@@ -232,8 +333,8 @@ export default function Home() {
             AI-Powered Analytics & CLO Mapping
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 reveal" style={{ transitionDelay: '100ms' }}>
-            <span className="text-slate-900">Class Response System</span>
+          <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight mb-6 reveal" style={{ transitionDelay: '100ms' }}>
+            <span id="scramble-text" className="font-display text-slate-900">Class Response System</span>
             <br />
             <span className="gradient-text font-bold text-4xl md:text-6xl">Powered by AI</span>
           </h1>
@@ -285,7 +386,7 @@ export default function Home() {
       <section id="features" className="relative py-32 px-6 bg-slate-50/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 reveal">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">Powerful Features</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 text-slate-900">Powerful Features</h2>
             <p className="text-slate-600 text-lg">Everything you need to create interactive learning experiences</p>
           </div>
 
@@ -321,7 +422,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center mb-4">
                   <Shield className="w-5 h-5 text-green-600" />
                 </div>
-                <h3 className="text-lg font-bold mb-1 text-slate-900">100% Anonymous</h3>
+                <h3 className="text-lg font-display font-bold mb-1 text-slate-900">100% Anonymous</h3>
                 <p className="text-sm text-slate-600">Secure and anonymous response collection with time-limited session access.</p>
               </div>
             </div>
@@ -333,7 +434,7 @@ export default function Home() {
                 <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center mb-4">
                   <Sparkles className="w-5 h-5 text-indigo-600" />
                 </div>
-                <h3 className="text-lg font-bold mb-1 text-slate-900">CLO Mapping</h3>
+                <h3 className="text-lg font-display font-bold mb-1 text-slate-900">CLO Mapping</h3>
                 <p className="text-sm text-slate-600">AI-driven alignment with Bloom&apos;s Taxonomy classification.</p>
               </div>
             </div>
@@ -346,7 +447,7 @@ export default function Home() {
                   <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center mb-4">
                     <QrCode className="w-6 h-6 text-orange-600" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-slate-900">QR Code Sessions</h3>
+                  <h3 className="text-xl font-display font-bold mb-2 text-slate-900">QR Code Sessions</h3>
                   <p className="text-slate-600">Generate unique access codes and QR codes for time-limited feedback sessions.</p>
                 </div>
                 <div className="flex-1 flex justify-center">
@@ -408,7 +509,7 @@ export default function Home() {
 
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="text-center mb-20 reveal">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">How It Works</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 text-slate-900">How It Works</h2>
             <p className="text-slate-600 text-lg">Three simple steps to transform your classroom</p>
           </div>
 
@@ -482,110 +583,110 @@ export default function Home() {
       <section className="relative py-32 px-6 overflow-hidden bg-slate-50/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 reveal">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">Experience the Platform</h2>
+            <h2 className="text-4xl md:text-5xl font-display font-bold mb-4 text-slate-900">Experience the Platform</h2>
             <p className="text-slate-600 text-lg">Interactive demonstrations of our key features</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {/* Student Demo Card */}
-            <Link href="/demo">
-              <div className="card-3d group relative h-[450px] cursor-pointer reveal">
-                <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-green-300 group-hover:shadow-2xl group-hover:shadow-green-100">
+            <Link href="/demo" className="group block">
+              <div className="card-3d relative h-[450px] cursor-pointer reveal">
+                <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-violet-300 group-hover:shadow-2xl group-hover:shadow-violet-100">
                   <div className="h-full flex flex-col">
-                    <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mb-6">
-                      <Play className="w-8 h-8 text-green-600" />
+                    <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center mb-6">
+                      <Play className="w-7 h-7 text-violet-600" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-4 text-slate-900">Student Feedback Demo</h3>
-                    <p className="text-slate-600 mb-6 flex-1">Experience the complete student feedback flow from session access to submission. See how easy it is for students to provide anonymous feedback.</p>
+                    <h3 className="text-2xl font-display font-bold mb-3 text-slate-900">Student Portal</h3>
+                    <p className="text-slate-600 mb-6 text-[15px] leading-relaxed">Experience a seamless flow—from secure session access to anonymous feedback submission.</p>
 
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 mb-6">
-                      <div className="space-y-3">
+                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-5 mb-8 flex-1">
+                      <div className="space-y-4">
                         <div className="flex items-center gap-3 text-slate-600 text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span>Session Access</span>
+                          <CheckCircle2 className="w-4 h-4 text-violet-600" />
+                          <span>Secure Access</span>
                         </div>
                         <div className="flex items-center gap-3 text-slate-600 text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span>Question Flow</span>
+                          <CheckCircle2 className="w-4 h-4 text-violet-600" />
+                          <span>Interactive Flow</span>
                         </div>
                         <div className="flex items-center gap-3 text-slate-600 text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span>Anonymous Submit</span>
+                          <CheckCircle2 className="w-4 h-4 text-violet-600" />
+                          <span>Anonymous Submission</span>
                         </div>
                       </div>
                     </div>
 
-                    <button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <div className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-violet-200">
                       Launch Demo
                       <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </Link>
 
             {/* Analytics Demo Card */}
-            <Link href="/student-reviews">
-              <div className="card-3d group relative h-[450px] cursor-pointer reveal" style={{ transitionDelay: '100ms' }}>
-                <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-purple-300 group-hover:shadow-2xl group-hover:shadow-purple-100">
+            <Link href="/student-reviews" className="group block">
+              <div className="card-3d relative h-[450px] cursor-pointer reveal" style={{ transitionDelay: '100ms' }}>
+                <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-fuchsia-300 group-hover:shadow-2xl group-hover:shadow-fuchsia-100">
                   <div className="h-full flex flex-col">
-                    <div className="w-16 h-16 rounded-2xl bg-purple-100 flex items-center justify-center mb-6">
-                      <BarChart3 className="w-8 h-8 text-purple-600" />
+                    <div className="w-14 h-14 rounded-2xl bg-fuchsia-100 flex items-center justify-center mb-6">
+                      <BarChart3 className="w-7 h-7 text-fuchsia-600" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-4 text-slate-900">AI Analytics Demo</h3>
-                    <p className="text-slate-600 mb-6 flex-1">Discover how AI-powered analytics work with real feedback data, sentiment analysis, and actionable insights for improvement.</p>
+                    <h3 className="text-2xl font-display font-bold mb-3 text-slate-900">AI Analytics</h3>
+                    <p className="text-slate-600 mb-6 text-[15px] leading-relaxed">Advanced sentiment analysis and actionable insights powered by our intelligent AI engine.</p>
 
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 mb-6">
-                      <div className="flex items-end gap-2 h-24">
-                        <div className="flex-1 bg-purple-400/60 rounded-t-lg h-[40%]"></div>
-                        <div className="flex-1 bg-purple-500/60 rounded-t-lg h-[70%]"></div>
-                        <div className="flex-1 bg-purple-600 rounded-t-lg h-[90%]"></div>
-                        <div className="flex-1 bg-purple-500/60 rounded-t-lg h-[60%]"></div>
-                        <div className="flex-1 bg-purple-400/60 rounded-t-lg h-[30%]"></div>
+                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-5 mb-8 flex-1 flex items-center justify-center">
+                      <div className="flex items-end gap-2 h-20 w-full px-2">
+                        <div className="flex-1 bg-fuchsia-400/60 rounded-t-lg h-[40%]"></div>
+                        <div className="flex-1 bg-fuchsia-500/60 rounded-t-lg h-[70%]"></div>
+                        <div className="flex-1 bg-fuchsia-600 rounded-t-lg h-[90%]"></div>
+                        <div className="flex-1 bg-fuchsia-500/60 rounded-t-lg h-[60%]"></div>
+                        <div className="flex-1 bg-fuchsia-400/60 rounded-t-lg h-[30%]"></div>
                       </div>
                     </div>
 
-                    <button className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                      View Analytics
+                    <div className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-fuchsia-200">
+                      View Insights
                       <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </Link>
 
             {/* CLO Mapping Demo Card */}
-            <Link href="/clo-demo">
-              <div className="card-3d group relative h-[450px] cursor-pointer reveal" style={{ transitionDelay: '200ms' }}>
-                <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-blue-300 group-hover:shadow-2xl group-hover:shadow-blue-100">
+            <Link href="/clo-demo" className="group block">
+              <div className="card-3d relative h-[450px] cursor-pointer reveal" style={{ transitionDelay: '200ms' }}>
+                <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-amber-300 group-hover:shadow-2xl group-hover:shadow-amber-100">
                   <div className="h-full flex flex-col">
-                    <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-6">
-                      <Sparkles className="w-8 h-8 text-[#468cfe]" />
+                    <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mb-6">
+                      <Sparkles className="w-7 h-7 text-amber-600" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-4 text-slate-900">CLO Mapping Demo</h3>
-                    <p className="text-slate-600 mb-6 flex-1">See how AI intelligently maps exam questions to Course Learning Outcomes with Bloom&apos;s Taxonomy classification and analysis.</p>
+                    <h3 className="text-2xl font-display font-bold mb-3 text-slate-900">CLO Mapping</h3>
+                    <p className="text-slate-600 mb-6 text-[15px] leading-relaxed">Intelligently map exam questions to outcomes using AI-driven Bloom&apos;s Taxonomy analysis.</p>
 
-                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 mb-6">
-                      <div className="space-y-3">
+                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-5 mb-8 flex-1">
+                      <div className="space-y-4">
                         <div className="flex items-center gap-3 text-slate-600 text-sm">
-                          <Brain className="w-4 h-4 text-[#468cfe]" />
-                          <span>AI CLO Detection</span>
+                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                          <span>Outcome Detection</span>
                         </div>
                         <div className="flex items-center gap-3 text-slate-600 text-sm">
-                          <Sparkles className="w-4 h-4 text-[#468cfe]" />
-                          <span>Bloom&apos;s Taxonomy</span>
+                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                          <span>Bloom&apos;s Mapping</span>
                         </div>
                         <div className="flex items-center gap-3 text-slate-600 text-sm">
-                          <BarChart3 className="w-4 h-4 text-[#468cfe]" />
+                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
                           <span>Distribution Analysis</span>
                         </div>
                       </div>
                     </div>
 
-                    <button className="w-full bg-[#468cfe] hover:bg-[#3a7be0] text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                      View CLO Analysis
+                    <div className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 group-hover:shadow-lg group-hover:shadow-amber-200">
+                      View Analysis
                       <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -598,7 +699,7 @@ export default function Home() {
       <section className="relative py-32 px-6 bg-white overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-100/50 via-white to-white"></div>
         <div className="max-w-4xl mx-auto text-center relative z-10 reveal">
-          <h2 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-slate-900">
+          <h2 className="text-5xl md:text-6xl font-display font-bold mb-6 tracking-tight text-slate-900">
             Ready to <span className="gradient-text">Transform</span><br />Your Classroom?
           </h2>
           <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
