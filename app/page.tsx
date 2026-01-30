@@ -10,13 +10,11 @@ import {
   GraduationCap,
   Shield,
   ArrowRight,
-  X,
   Play,
   Sparkles,
   Brain,
   Zap,
   ChevronRight,
-  Menu,
   MessageCircle,
   CheckCircle2,
   Smartphone,
@@ -26,6 +24,9 @@ import {
   Cloud
 } from 'lucide-react'
 import Image from 'next/image'
+import { Navbar } from '@/components/layout/Navbar'
+import { Footer } from '@/components/layout/Footer'
+import { AboutModal } from '@/components/layout/AboutModal'
 
 // Text Scramble Logic
 class TextScramble {
@@ -98,7 +99,6 @@ class TextScramble {
 
 export default function Home() {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // Spotlight effect
   useEffect(() => {
@@ -274,52 +274,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 border-b border-slate-200/80 bg-white/70 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2">
-              <Image src="/assets/logo.png" alt="Logo" width={32} height={32} className='rounded-sm' />
-              <span className="font-display font-bold text-xl tracking-tight text-slate-900">CRS</span>
-            </Link>
-          </div>
-
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <Link href="/demo" className="hover:text-[#468cfe] transition-colors">Demo</Link>
-            <Link href="/manuals" className="hover:text-[#468cfe] transition-colors">Documentation</Link>
-            <button onClick={() => setIsAboutModalOpen(true)} className="hover:text-[#468cfe] transition-colors">About</button>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link href="/login" className="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
-              Sign In
-            </Link>
-            <Link href="/register/university-admin">
-              <button className="px-4 py-2 text-sm font-medium text-white bg-[#468cfe] hover:bg-[#3a7be0] rounded-full shadow-lg shadow-blue-200 hover:shadow-xl transition-all">
-                Get Started Free
-              </button>
-            </Link>
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-slate-600 hover:text-slate-900"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-xl py-4 px-6 space-y-3">
-            <Link href="/login" className="block text-slate-700 hover:text-slate-900 py-2">Sign In</Link>
-            <Link href="/demo" className="block text-slate-600 hover:text-slate-900 py-2">Demo</Link>
-            <Link href="/manuals" className="block text-slate-600 hover:text-slate-900 py-2">Documentation</Link>
-            <button onClick={() => { setIsAboutModalOpen(true); setIsMobileMenuOpen(false); }} className="block text-slate-600 hover:text-slate-900 py-2 w-full text-left">
-              About
-            </button>
-          </div>
-        )}
-      </nav>
+      <Navbar onAboutClick={() => setIsAboutModalOpen(true)} />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden bg-white">
@@ -334,7 +289,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight mb-6 reveal" style={{ transitionDelay: '100ms' }}>
-            <span id="scramble-text" className="font-display text-slate-900">Class Response System</span>
+            <span id="scramble-text" className="text-slate-900">Class Response System</span>
             <br />
             <span className="gradient-text font-bold text-4xl md:text-6xl">Powered by AI</span>
           </h1>
@@ -728,135 +683,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 py-12 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-            <div className="col-span-2 sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#468cfe] to-[#3b82f6] rounded-lg flex items-center justify-center shadow-lg shadow-blue-200">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <span className="font-bold text-xl text-slate-900">CRS</span>
-              </div>
-              <p className="text-slate-600 text-sm">
-                Enhancing educational quality through AI-powered feedback collection.
-              </p>
-            </div>
+      <Footer onAboutClick={() => setIsAboutModalOpen(true)} />
 
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-4">Quick Links</h4>
-              <div className="space-y-3">
-                <Link href="/feedback" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Student Feedback
-                </Link>
-                <Link href="/login" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Admin Login
-                </Link>
-                <Link href="/register/university-admin" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Register
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-4">Resources</h4>
-              <div className="space-y-3">
-                <Link href="/manuals" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Documentation
-                </Link>
-                <Link href="/demo" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Demo
-                </Link>
-                <Link href="/student-reviews" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Analytics
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-4">Legal</h4>
-              <div className="space-y-3">
-                <button onClick={() => setIsAboutModalOpen(true)} className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors text-left">
-                  About Us
-                </button>
-                <Link href="/terms" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Terms
-                </Link>
-                <Link href="/privacy" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
-                  Privacy
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 pt-8 text-center">
-            <p className="text-slate-500 text-sm">&copy; 2025 Class Response System. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      {/* About Us Modal */}
-      {isAboutModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 relative shadow-2xl">
-            <button
-              onClick={() => setIsAboutModalOpen(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="text-center mb-8">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#468cfe] to-[#3b82f6] rounded-xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-200">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">About Us</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-sm">SAH</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Prof. Dr. Syed Akhter Hossain</h3>
-                  <p className="text-slate-500 text-sm">System Architect & Concept Designer</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-sm">JC</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">June Chakma</h3>
-                  <p className="text-slate-500 text-sm">Lead Developer</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold text-sm">MR</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Assoc. Prof. Mahmudur Rahman</h3>
-                  <p className="text-slate-500 text-sm">Consultant</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8">
-              <button
-                onClick={() => setIsAboutModalOpen(false)}
-                className="w-full bg-[#468cfe] hover:bg-[#3a7be0] text-white font-medium py-3 rounded-xl transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
     </div>
   )
 }
