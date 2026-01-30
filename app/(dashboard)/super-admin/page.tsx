@@ -1,14 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { Sidebar } from "@/components/layout/sidebar/sidebar"
 import { Header } from "@/components/layout/header/header"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -18,45 +12,36 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Users, BookOpen, BarChart3, TrendingUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { StatCard } from "@/components/ui/stat-card"
+import { Spotlight } from "@/components/ui/spotlight"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Users, BookOpen, BarChart3, TrendingUp, ArrowRight, UserPlus, Settings, Sparkles } from "lucide-react"
 
-// Mock data for demonstration
 const stats = [
   {
     title: "Total Teachers",
     value: "156",
-    change: "+12%",
-    trend: "up",
+    change: "+12% from last month",
     icon: Users,
-    color: "text-blue-600",
-    bgColor: "bg-blue-100",
   },
   {
     title: "Active Sessions",
     value: "43",
-    change: "+8%",
-    trend: "up",
+    change: "+8% from last week",
     icon: BarChart3,
-    color: "text-green-600",
-    bgColor: "bg-green-100",
   },
   {
     title: "Question Bank",
     value: "892",
-    change: "+24",
-    trend: "up",
+    change: "+24 new questions",
     icon: BookOpen,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
   },
   {
     title: "Total Responses",
     value: "12.4K",
-    change: "+18%",
-    trend: "up",
+    change: "+18% this month",
     icon: TrendingUp,
-    color: "text-amber-600",
-    bgColor: "bg-amber-100",
   },
 ]
 
@@ -113,116 +98,168 @@ const recentTeachers = [
   },
 ]
 
+const avatarGradients = [
+  "from-blue-500 to-cyan-500",
+  "from-emerald-500 to-teal-500",
+  "from-violet-500 to-purple-500",
+  "from-amber-500 to-orange-500",
+]
+
 export default function SuperAdminDashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-white">
+      {/* Background */}
+      <div className="fixed inset-0 bg-grid-small [mask-image:radial-gradient(ellipse_at_center,white,transparent_80%)]" />
+
+      {/* Spotlight Effect */}
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20"
+        fill="#3b82f6"
+      />
+
       {/* Sidebar */}
-      <Sidebar role="super-admin" />
+      <Sidebar
+        role="super-admin"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:pl-64">
+      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64">
         {/* Header */}
-        <Header userName="Admin User" userEmail="admin@crs.com" />
+        <Header
+          userName="Admin User"
+          userEmail="admin@crs.com"
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {/* Page Title */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-1">
-              Welcome back! Here's what's happening in your system.
-            </p>
+          <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 p-2.5 shadow-lg">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                  System Dashboard
+                </h1>
+              </div>
+              <p className="text-slate-500 text-sm">
+                Welcome back! Here&apos;s what&apos;s happening in your system.
+              </p>
+            </div>
+            <div className="flex gap-2 sm:gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Settings</span>
+              </Button>
+              <Button
+                size="sm"
+                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Teacher</span>
+              </Button>
+            </div>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Stats Grid with Moving Border */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
             {stats.map((stat, index) => (
-              <Card key={index} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        {stat.title}
-                      </p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">
-                        {stat.value}
-                      </p>
-                      <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        {stat.change} from last month
-                      </p>
-                    </div>
-                    <div className={`${stat.bgColor} p-3 rounded-lg`}>
-                      <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <StatCard
+                key={index}
+                title={stat.title}
+                value={stat.value}
+                change={stat.change}
+                icon={stat.icon}
+                index={index}
+                trend="up"
+              />
             ))}
           </div>
 
           {/* Recent Teachers Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Teachers</CardTitle>
-              <CardDescription>
-                Recently registered teachers and their activity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="hidden md:table-cell">Institution</TableHead>
-                      <TableHead className="hidden sm:table-cell">Email</TableHead>
-                      <TableHead className="text-center">Courses</TableHead>
-                      <TableHead className="text-center hidden lg:table-cell">Sessions</TableHead>
-                      <TableHead className="hidden sm:table-cell">Status</TableHead>
-                      <TableHead className="hidden lg:table-cell">Joined</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentTeachers.map((teacher) => (
-                      <TableRow key={teacher.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {teacher.name}
-                            </div>
-                            <div className="text-sm text-gray-500 md:hidden">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-input overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 p-2.5 shadow-lg">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Recent Teachers</h2>
+                    <p className="text-sm text-slate-500">
+                      Recently registered teachers and their activity
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
+                  View All
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/50">
+                    <TableHead className="font-semibold">Teacher</TableHead>
+                    <TableHead className="hidden md:table-cell font-semibold">Institution</TableHead>
+                    <TableHead className="hidden lg:table-cell font-semibold">Email</TableHead>
+                    <TableHead className="text-center font-semibold">Courses</TableHead>
+                    <TableHead className="hidden sm:table-cell font-semibold">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTeachers.map((teacher, idx) => (
+                    <TableRow key={teacher.id} className="hover:bg-slate-50/50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9 border-2 border-white shadow-md">
+                            <AvatarFallback
+                              className={`text-white font-semibold text-xs bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]}`}
+                            >
+                              {teacher.name.split(" ").map((n) => n[0]).join("").substring(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <div className="font-medium text-slate-900 text-sm truncate">{teacher.name}</div>
+                            <div className="text-xs text-slate-400 md:hidden truncate">
                               {teacher.institution}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {teacher.institution}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-gray-600">
-                          {teacher.email}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary">{teacher.courses}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center hidden lg:table-cell">
-                          <Badge variant="outline">{teacher.sessions}</Badge>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="success">
-                            {teacher.status.charAt(0).toUpperCase() + teacher.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell text-gray-600">
-                          {new Date(teacher.joinedDate).toLocaleDateString()}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-slate-600 text-sm">
+                        {teacher.institution}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-slate-500 text-sm">
+                        {teacher.email}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="font-medium">
+                          {teacher.courses}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                          Active
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </main>
       </div>
     </div>

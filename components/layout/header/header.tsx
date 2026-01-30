@@ -1,8 +1,7 @@
 "use client"
 
-import { Bell, Search, Menu } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { Bell, Menu } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface HeaderProps {
   userName?: string
@@ -19,50 +18,43 @@ export function Header({ userName = "User", userEmail, onMenuClick }: HeaderProp
     .slice(0, 2)
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white">
-      <div className="flex h-16 items-center gap-4 px-6">
-        {/* Mobile Menu Button */}
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/80 backdrop-blur-sm">
+      <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
+        {/* Left side - Mobile Menu Button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          className="lg:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Search */}
-        <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Search..."
-              className="w-full h-10 pl-10 pr-4 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#468cfe] focus:border-transparent"
-            />
-          </div>
-        </div>
+        {/* Spacer for desktop */}
+        <div className="hidden lg:block" />
 
         {/* Right Section */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {/* Notifications */}
-          <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+          <button className="relative p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
           </button>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-            <div className="hidden md:block text-right">
-              <p className="text-sm font-medium text-gray-900">{userName}</p>
-              {userEmail && (
-                <p className="text-xs text-gray-500">{userEmail}</p>
-              )}
-            </div>
-            <Avatar className="h-9 w-9">
-              <AvatarImage src="/assets/avatar.png" alt={userName} />
-              <AvatarFallback className="bg-[#468cfe] text-white text-sm font-medium">
+          {/* User Info */}
+          <div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-slate-200">
+            {/* Avatar */}
+            <Avatar className="h-9 w-9 border-2 border-white shadow-md">
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-violet-500 text-white text-sm font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
+
+            {/* Name & Email */}
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold text-slate-900">{userName}</p>
+              {userEmail && (
+                <p className="text-xs text-slate-500">{userEmail}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
