@@ -14,6 +14,7 @@ import {
   Calendar,
   HelpCircle,
   CalendarDays,
+  Target,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -36,6 +37,7 @@ const teacherNavigation = [
   { name: "Courses", href: "/teacher/courses", icon: GraduationCap },
   { name: "Sessions", href: "/teacher/sessions", icon: Calendar },
   { name: "Questions", href: "/teacher/questions", icon: HelpCircle },
+  { name: "CLO Mapping", href: "/teacher/clo-mapping", icon: Target },
   { name: "Analytics", href: "/teacher/analytics", icon: BarChart3 },
   { name: "Profile", href: "/teacher/profile", icon: Settings },
 ]

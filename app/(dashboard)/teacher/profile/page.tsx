@@ -13,11 +13,7 @@ import {
   Calendar,
   Edit3,
   Camera,
-  Shield,
-  Bell,
   Key,
-  Palette,
-  Globe,
   Save,
   X,
   CheckCircle2,
@@ -74,37 +70,6 @@ const achievements = [
     icon: Users,
     color: "blue",
     earned: false,
-  },
-]
-
-const settingsSections = [
-  {
-    title: "Notifications",
-    icon: Bell,
-    description: "Manage email and push notifications",
-    settings: [
-      { label: "Session responses", enabled: true },
-      { label: "Weekly summary", enabled: true },
-      { label: "AI insights alerts", enabled: false },
-    ],
-  },
-  {
-    title: "Privacy",
-    icon: Shield,
-    description: "Control your data and visibility",
-    settings: [
-      { label: "Show profile to students", enabled: false },
-      { label: "Anonymous analytics", enabled: true },
-    ],
-  },
-  {
-    title: "Appearance",
-    icon: Palette,
-    description: "Customize your dashboard look",
-    settings: [
-      { label: "Dark mode", enabled: false },
-      { label: "Compact view", enabled: false },
-    ],
   },
 ]
 
@@ -353,59 +318,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Settings */}
-                <div className="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-sm">
-                  <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-indigo-600" />
-                    Settings
-                  </h3>
-
-                  <div className="space-y-6">
-                    {settingsSections.map((section, index) => (
-                      <div
-                        key={index}
-                        className="p-4 rounded-xl bg-slate-50 border border-slate-100"
-                      >
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="p-2 bg-white rounded-lg border border-slate-200">
-                            <section.icon className="w-4 h-4 text-slate-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-slate-900">
-                              {section.title}
-                            </h4>
-                            <p className="text-xs text-slate-500">
-                              {section.description}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 ml-11">
-                          {section.settings.map((setting, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between py-2"
-                            >
-                              <span className="text-sm text-slate-700">
-                                {setting.label}
-                              </span>
-                              <button
-                                className={`relative w-11 h-6 rounded-full transition-colors ${
-                                  setting.enabled ? "bg-indigo-600" : "bg-slate-300"
-                                }`}
-                              >
-                                <span
-                                  className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                                    setting.enabled ? "left-6" : "left-1"
-                                  }`}
-                                />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Right Column - Achievements */}
@@ -480,10 +392,6 @@ export default function ProfilePage() {
                     <Button variant="outline" className="w-full justify-start gap-2">
                       <Key className="w-4 h-4" />
                       Change Password
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                      <Shield className="w-4 h-4" />
-                      Two-Factor Authentication
                     </Button>
                     <Button
                       variant="outline"
