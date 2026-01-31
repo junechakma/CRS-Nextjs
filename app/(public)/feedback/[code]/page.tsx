@@ -431,13 +431,12 @@ export default function SessionResponsePage() {
             {/* Question Header */}
             <div className="p-6 sm:p-8 border-b border-slate-100">
               <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-2xl shrink-0 ${
-                  currentQ.type === "rating" ? "bg-amber-100" :
-                  currentQ.type === "boolean" ? "bg-emerald-100" :
-                  currentQ.type === "multiple" ? "bg-violet-100" :
-                  currentQ.type === "text" ? "bg-blue-100" :
-                  "bg-rose-100"
-                }`}>
+                <div className={`p-3 rounded-2xl shrink-0 ${currentQ.type === "rating" ? "bg-amber-100" :
+                    currentQ.type === "boolean" ? "bg-emerald-100" :
+                      currentQ.type === "multiple" ? "bg-violet-100" :
+                        currentQ.type === "text" ? "bg-blue-100" :
+                          "bg-rose-100"
+                  }`}>
                   {currentQ.type === "rating" && <Star className="w-6 h-6 text-amber-600" />}
                   {currentQ.type === "boolean" && <CheckCircle2 className="w-6 h-6 text-emerald-600" />}
                   {currentQ.type === "multiple" && <List className="w-6 h-6 text-violet-600" />}
@@ -449,13 +448,12 @@ export default function SessionResponsePage() {
                     {currentQ.text}
                   </p>
                   <div className="flex items-center gap-2 mt-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      currentQ.type === "rating" ? "bg-amber-50 text-amber-700" :
-                      currentQ.type === "boolean" ? "bg-emerald-50 text-emerald-700" :
-                      currentQ.type === "multiple" ? "bg-violet-50 text-violet-700" :
-                      currentQ.type === "text" ? "bg-blue-50 text-blue-700" :
-                      "bg-rose-50 text-rose-700"
-                    }`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ${currentQ.type === "rating" ? "bg-amber-50 text-amber-700" :
+                        currentQ.type === "boolean" ? "bg-emerald-50 text-emerald-700" :
+                          currentQ.type === "multiple" ? "bg-violet-50 text-violet-700" :
+                            currentQ.type === "text" ? "bg-blue-50 text-blue-700" :
+                              "bg-rose-50 text-rose-700"
+                      }`}>
                       {currentQ.type === "rating" && "Rating Scale"}
                       {currentQ.type === "boolean" && "Yes / No"}
                       {currentQ.type === "multiple" && "Multiple Choice"}
@@ -479,17 +477,15 @@ export default function SessionResponsePage() {
                     <button
                       key={value}
                       onClick={() => updateResponse(value)}
-                      className={`w-16 h-16 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${
-                        currentResponse?.value === value
+                      className={`w-16 h-16 rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 ${currentResponse?.value === value
                           ? "border-amber-400 bg-amber-50 shadow-lg shadow-amber-100"
                           : "border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
-                      }`}
+                        }`}
                     >
-                      <Star className={`w-6 h-6 ${
-                        currentResponse?.value === value || (typeof currentResponse?.value === "number" && value <= currentResponse.value)
+                      <Star className={`w-6 h-6 ${currentResponse?.value === value || (typeof currentResponse?.value === "number" && value <= currentResponse.value)
                           ? "text-amber-400 fill-amber-400"
                           : "text-slate-300"
-                      }`} />
+                        }`} />
                       <span className="text-sm font-medium text-slate-600">{value}</span>
                     </button>
                   ))}
@@ -501,28 +497,24 @@ export default function SessionResponsePage() {
                 <div className="flex gap-4 justify-center">
                   <button
                     onClick={() => updateResponse(true)}
-                    className={`flex-1 max-w-48 p-6 rounded-2xl border-2 transition-all ${
-                      currentResponse?.value === true
+                    className={`flex-1 max-w-48 p-6 rounded-2xl border-2 transition-all ${currentResponse?.value === true
                         ? "border-emerald-400 bg-emerald-50 shadow-lg shadow-emerald-100"
                         : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50"
-                    }`}
+                      }`}
                   >
-                    <CheckCircle2 className={`w-10 h-10 mx-auto mb-3 ${
-                      currentResponse?.value === true ? "text-emerald-500" : "text-slate-300"
-                    }`} />
+                    <CheckCircle2 className={`w-10 h-10 mx-auto mb-3 ${currentResponse?.value === true ? "text-emerald-500" : "text-slate-300"
+                      }`} />
                     <p className="text-lg font-semibold text-slate-900">Yes</p>
                   </button>
                   <button
                     onClick={() => updateResponse(false)}
-                    className={`flex-1 max-w-48 p-6 rounded-2xl border-2 transition-all ${
-                      currentResponse?.value === false
+                    className={`flex-1 max-w-48 p-6 rounded-2xl border-2 transition-all ${currentResponse?.value === false
                         ? "border-red-400 bg-red-50 shadow-lg shadow-red-100"
                         : "border-slate-200 hover:border-red-300 hover:bg-red-50/50"
-                    }`}
+                      }`}
                   >
-                    <div className={`w-10 h-10 mx-auto mb-3 rounded-full border-4 ${
-                      currentResponse?.value === false ? "border-red-400" : "border-slate-300"
-                    }`} />
+                    <div className={`w-10 h-10 mx-auto mb-3 rounded-full border-4 ${currentResponse?.value === false ? "border-red-400" : "border-slate-300"
+                      }`} />
                     <p className="text-lg font-semibold text-slate-900">No</p>
                   </button>
                 </div>
@@ -535,17 +527,15 @@ export default function SessionResponsePage() {
                     <button
                       key={idx}
                       onClick={() => updateResponse(option)}
-                      className={`w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4 ${
-                        currentResponse?.value === option
+                      className={`w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4 ${currentResponse?.value === option
                           ? "border-violet-400 bg-violet-50 shadow-lg shadow-violet-100"
                           : "border-slate-200 hover:border-violet-300 hover:bg-violet-50/50"
-                      }`}
+                        }`}
                     >
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                        currentResponse?.value === option
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${currentResponse?.value === option
                           ? "border-violet-500 bg-violet-500"
                           : "border-slate-300"
-                      }`}>
+                        }`}>
                         {currentResponse?.value === option && (
                           <CheckCircle2 className="w-4 h-4 text-white" />
                         )}
@@ -602,11 +592,10 @@ export default function SessionResponsePage() {
                 <button
                   onClick={handlePrevious}
                   disabled={currentQuestion === 0}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${
-                    currentQuestion === 0
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${currentQuestion === 0
                       ? "text-slate-400 cursor-not-allowed"
                       : "text-slate-700 hover:bg-slate-200"
-                  }`}
+                    }`}
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Previous
@@ -616,11 +605,10 @@ export default function SessionResponsePage() {
                   <button
                     onClick={handleSubmit}
                     disabled={!canProceed() || isSubmitting}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                      canProceed() && !isSubmitting
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${canProceed() && !isSubmitting
                         ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:shadow-lg hover:shadow-emerald-200"
                         : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     {isSubmitting ? (
                       <>
@@ -638,11 +626,10 @@ export default function SessionResponsePage() {
                   <button
                     onClick={handleNext}
                     disabled={!canProceed()}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${
-                      canProceed()
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${canProceed()
                         ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white hover:shadow-lg hover:shadow-blue-200"
                         : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     Next
                     <ArrowRight className="w-4 h-4" />
@@ -659,13 +646,12 @@ export default function SessionResponsePage() {
             <button
               key={idx}
               onClick={() => setCurrentQuestion(idx)}
-              className={`w-3 h-3 rounded-full transition-all ${
-                idx === currentQuestion
+              className={`w-3 h-3 rounded-full transition-all ${idx === currentQuestion
                   ? "bg-blue-500 w-8"
                   : responses[idx]?.value !== null && responses[idx]?.value !== ""
-                  ? "bg-emerald-400"
-                  : "bg-slate-300 hover:bg-slate-400"
-              }`}
+                    ? "bg-emerald-400"
+                    : "bg-slate-300 hover:bg-slate-400"
+                }`}
             />
           ))}
         </div>

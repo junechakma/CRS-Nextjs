@@ -1,13 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertCircle } from "lucide-react"
+import { Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
-export default function RegisterPage() {
-    const [email, setEmail] = useState("")
+export default function ResetPasswordPage() {
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
@@ -15,7 +14,6 @@ export default function RegisterPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState("")
     const [success, setSuccess] = useState(false)
-    const [agreedToTerms, setAgreedToTerms] = useState(false)
 
     const router = useRouter()
     const supabase = createClient()
@@ -41,11 +39,6 @@ export default function RegisterPage() {
         setError("")
 
         // Validation
-        if (!agreedToTerms) {
-            setError("Please agree to the Terms of Service and Privacy Policy")
-            return
-        }
-
         if (password !== confirmPassword) {
             setError("Passwords do not match")
             return
@@ -60,42 +53,30 @@ export default function RegisterPage() {
         setIsLoading(true)
 
         try {
-            const { data, error: signUpError } = await supabase.auth.signUp({
-                email: email.trim(),
-                password,
-                options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
-                },
+            const { error: updateError } = await supabase.auth.updateUser({
+                password: password,
             })
 
-            if (signUpError) {
-                if (signUpError.message.includes('already registered')) {
-                    setError('This email is already registered. Please sign in or use a different email.')
-                } else {
-                    setError(signUpError.message)
-                }
+            if (updateError) {
+                setError(updateError.message)
                 return
             }
 
-            if (data.user) {
-                // Check if email confirmation is required
-                if (data.user.identities && data.user.identities.length === 0) {
-                    setError('This email is already registered. Please sign in or use a different email.')
-                    return
-                }
+            setSuccess(true)
 
-                // Show success message
-                setSuccess(true)
-            }
+            // Redirect to login after 3 seconds
+            setTimeout(() => {
+                router.push('/login?message=Password updated successfully. Please sign in with your new password.')
+            }, 3000)
         } catch (err) {
-            console.error('Registration error:', err)
+            console.error('Password update error:', err)
             setError('An unexpected error occurred. Please try again.')
         } finally {
             setIsLoading(false)
         }
     }
 
-    // Success state - show email verification message
+    // Success state
     if (success) {
         return (
             <div className="space-y-6">
@@ -103,42 +84,25 @@ export default function RegisterPage() {
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CheckCircle className="w-8 h-8 text-green-600" />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mb-2">Check your email</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 mb-2">Password updated!</h1>
                     <p className="text-slate-500 text-sm mb-6">
-                        We&apos;ve sent a verification link to <strong className="text-slate-700">{email}</strong>
+                        Your password has been successfully reset.
                     </p>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <h3 className="font-semibold text-blue-900 mb-2">Next steps:</h3>
-                    <ol className="list-decimal list-inside text-sm text-blue-800 space-y-2">
-                        <li>Check your email inbox (and spam folder)</li>
-                        <li>Click the verification link in the email</li>
-                        <li>Complete your profile setup</li>
-                        <li>Start using CRS!</li>
-                    </ol>
-                </div>
-
-                <div className="text-center pt-4">
-                    <p className="text-slate-600 text-sm mb-4">
-                        Didn&apos;t receive the email?
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                    <p className="text-sm text-green-800">
+                        Redirecting you to sign in...
                     </p>
-                    <button
-                        onClick={() => {
-                            setSuccess(false)
-                            setEmail("")
-                            setPassword("")
-                            setConfirmPassword("")
-                        }}
-                        className="text-[#468cfe] font-semibold hover:underline"
-                    >
-                        Try again with a different email
-                    </button>
+                    <div className="w-5 h-5 border-2 border-green-300 border-t-green-600 rounded-full animate-spin mx-auto mt-3" />
                 </div>
 
                 <div className="text-center">
-                    <Link href="/login" className="text-slate-500 text-sm hover:text-slate-700">
-                        Back to Sign in
+                    <Link
+                        href="/login"
+                        className="text-[#468cfe] font-semibold hover:underline"
+                    >
+                        Sign in now
                     </Link>
                 </div>
             </div>
@@ -148,8 +112,10 @@ export default function RegisterPage() {
     return (
         <div className="space-y-6">
             <div className="text-center mb-8">
-                <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">Create account</h1>
-                <p className="text-slate-500 text-sm">Join the next generation of education</p>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2 bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
+                    Set new password
+                </h1>
+                <p className="text-slate-500 text-sm">Create a strong password for your account</p>
             </div>
 
             {/* Error Message */}
@@ -161,29 +127,7 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Email Input with Floating Label Animation */}
-                <div className="relative group">
-                    <Mail className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 transition-colors duration-300 group-focus-within:text-[#468cfe] z-10 pointer-events-none" />
-                    <input
-                        type="email"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder=" "
-                        required
-                        className="peer w-full px-4 py-3.5 pl-12 rounded-xl border-2 border-slate-200 bg-white/50 outline-none focus:border-[#468cfe] focus:bg-white text-slate-900 text-sm font-medium transition-all duration-300 placeholder-transparent"
-                    />
-                    <label
-                        htmlFor="email"
-                        className="absolute left-12 top-3.5 text-slate-400 text-sm font-medium transition-all duration-300 pointer-events-none
-                                        peer-focus:-top-2.5 peer-focus:left-3 peer-focus:text-xs peer-focus:text-[#468cfe] peer-focus:bg-white peer-focus:px-2 peer-focus:rounded
-                                        peer-[:not(:placeholder-shown)]:-top-2.5 peer-[:not(:placeholder-shown)]:left-3 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-600 peer-[:not(:placeholder-shown)]:bg-white peer-[:not(:placeholder-shown)]:px-2 peer-[:not(:placeholder-shown)]:rounded"
-                    >
-                        Email address
-                    </label>
-                </div>
-
-                {/* Password Input with Floating Label Animation */}
+                {/* Password Input */}
                 <div className="relative group">
                     <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 transition-colors duration-300 group-focus-within:text-[#468cfe] z-10 pointer-events-none" />
                     <input
@@ -201,7 +145,7 @@ export default function RegisterPage() {
                                         peer-focus:-top-2.5 peer-focus:left-3 peer-focus:text-xs peer-focus:text-[#468cfe] peer-focus:bg-white peer-focus:px-2 peer-focus:rounded
                                         peer-[:not(:placeholder-shown)]:-top-2.5 peer-[:not(:placeholder-shown)]:left-3 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:text-slate-600 peer-[:not(:placeholder-shown)]:bg-white peer-[:not(:placeholder-shown)]:px-2 peer-[:not(:placeholder-shown)]:rounded"
                     >
-                        Create Password
+                        New Password
                     </label>
                     <button
                         type="button"
@@ -228,7 +172,7 @@ export default function RegisterPage() {
                     </p>
                 </div>
 
-                {/* Confirm Password Input with Floating Label Animation */}
+                {/* Confirm Password Input */}
                 <div className="relative group">
                     <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 transition-colors duration-300 group-focus-within:text-[#468cfe] z-10 pointer-events-none" />
                     <input
@@ -264,27 +208,6 @@ export default function RegisterPage() {
                     </p>
                 )}
 
-                {/* Terms */}
-                <div className="flex items-start gap-2 py-1">
-                    <input
-                        type="checkbox"
-                        id="terms"
-                        checked={agreedToTerms}
-                        onChange={(e) => setAgreedToTerms(e.target.checked)}
-                        className="mt-1 w-4 h-4 rounded border-slate-300 text-[#468cfe] focus:ring-2 focus:ring-[#468cfe]/20 cursor-pointer"
-                    />
-                    <label htmlFor="terms" className="text-xs text-slate-500 leading-relaxed cursor-pointer">
-                        I agree to the{" "}
-                        <Link href="#" className="text-[#468cfe] font-semibold hover:underline">
-                            Terms of Service
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="#" className="text-[#468cfe] font-semibold hover:underline">
-                            Privacy Policy
-                        </Link>
-                    </label>
-                </div>
-
                 {/* Submit Button */}
                 <button
                     type="submit"
@@ -295,22 +218,12 @@ export default function RegisterPage() {
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            Create account
+                            Reset password
                             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                         </>
                     )}
                 </button>
             </form>
-
-            {/* Switch Form */}
-            <div className="mt-6 text-center">
-                <p className="text-slate-600 text-sm">
-                    Already have an account?
-                    <Link href="/login" className="ml-1 text-[#468cfe] font-bold hover:underline transition-all">
-                        Sign in
-                    </Link>
-                </p>
-            </div>
         </div>
     )
 }

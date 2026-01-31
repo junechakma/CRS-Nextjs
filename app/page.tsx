@@ -27,6 +27,7 @@ import Image from 'next/image'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { AboutModal } from '@/components/layout/AboutModal'
+import PricingSection from '@/components/layout/PricingSection'
 
 // Text Scramble Logic
 class TextScramble {
@@ -649,6 +650,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <PricingSection />
 
       {/* CTA Section */}
       <section className="relative py-32 px-6 bg-white overflow-hidden">

@@ -22,10 +22,10 @@ export function Navbar({ onAboutClick }: NavbarProps) {
                     </Link>
                 </div>
 
-                <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+                <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 absolute left-1/2 -translate-x-1/2">
                     <Link href="/demo" className="hover:text-[#468cfe] transition-colors">Demo</Link>
-                    <Link href="/manuals" className="hover:text-[#468cfe] transition-colors">Documentation</Link>
-                    <button onClick={onAboutClick} className="hover:text-[#468cfe] transition-colors">About</button>
+                    <Link href="/manuals" className="hover:text-[#468cfe] transition-colors">Manuals</Link>
+                    <button onClick={onAboutClick} className="hover:text-[#468cfe] transition-colors">About Us</button>
                 </div>
 
                 <div className="flex items-center gap-4">
