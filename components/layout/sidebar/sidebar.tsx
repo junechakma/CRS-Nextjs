@@ -17,6 +17,7 @@ import {
   Target,
   CreditCard,
 } from "lucide-react"
+import Image from "next/image"
 
 interface SidebarProps {
   role: "super-admin" | "teacher"
@@ -68,9 +69,7 @@ export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between gap-3 px-6 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-sm">CRS</span>
-            </div>
+            <Image src="/assets/logo.png" alt="Logo" width={32} height={32} className="rounded-sm" />
             <div>
               <span className="text-lg font-semibold text-slate-900">CRS</span>
               <p className="text-[10px] text-slate-400 -mt-0.5">Response System</p>
