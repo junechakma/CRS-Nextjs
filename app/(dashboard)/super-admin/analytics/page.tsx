@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/layout/sidebar/sidebar"
 import { Header } from "@/components/layout/header/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Spotlight } from "@/components/ui/spotlight"
 import {
   BarChart3,
   TrendingUp,
@@ -15,171 +15,498 @@ import {
   Download,
   ArrowUpRight,
   ArrowDownRight,
+  Star,
+  DollarSign,
+  UserPlus,
+  BookOpen,
+  ChevronRight,
+  Clock,
+  Sparkles,
+  Crown,
+  Zap,
+  Activity,
+  Brain,
 } from "lucide-react"
 
-const overviewStats = [
-  { title: "Total Responses", value: "24,582", change: "+12.5%", trend: "up", icon: MessageSquare, color: "from-blue-500 to-cyan-500" },
-  { title: "Active Teachers", value: "156", change: "+8.2%", trend: "up", icon: Users, color: "from-emerald-500 to-teal-500" },
-  { title: "Avg Response Rate", value: "78.4%", change: "+3.1%", trend: "up", icon: TrendingUp, color: "from-violet-500 to-purple-500" },
-  { title: "Active Sessions", value: "43", change: "-2.4%", trend: "down", icon: Calendar, color: "from-amber-500 to-orange-500" },
+// Mock data matching super_admin_dashboard_stats view
+const systemStats = {
+  totalTeachers: 156,
+  activeTeachers: 142,
+  premiumUsers: 48,
+  customUsers: 5,
+  newTeachersWeek: 12,
+  totalSessions: 1247,
+  activeSessions: 43,
+  completedSessions: 1189,
+  totalResponses: 24582,
+  platformAvgRating: 4.52,
+  totalCourses: 389,
+  estimatedMrr: 720, // $15 * 48 premium users
+}
+
+// Plan distribution matching plan_distribution view
+const planDistribution = [
+  { plan: "Free", count: 103, percentage: 66.0, color: "bg-slate-400" },
+  { plan: "Premium", count: 48, percentage: 30.8, color: "bg-violet-500" },
+  { plan: "Custom", count: 5, percentage: 3.2, color: "bg-amber-500" },
 ]
 
-const monthlyData = [
-  { month: "Aug", responses: 1850 },
-  { month: "Sep", responses: 2340 },
-  { month: "Oct", responses: 2890 },
-  { month: "Nov", responses: 3200 },
-  { month: "Dec", responses: 2100 },
-  { month: "Jan", responses: 3580 },
+// Monthly trends matching monthly_response_trends view
+const monthlyTrends = [
+  { month: "Aug", responses: 1850, sessions: 145, activeTeachers: 98 },
+  { month: "Sep", responses: 2340, sessions: 178, activeTeachers: 112 },
+  { month: "Oct", responses: 2890, sessions: 195, activeTeachers: 128 },
+  { month: "Nov", responses: 3200, sessions: 210, activeTeachers: 135 },
+  { month: "Dec", responses: 2100, sessions: 156, activeTeachers: 118 },
+  { month: "Jan", responses: 3580, sessions: 234, activeTeachers: 142 },
 ]
 
+// Top performing teachers matching top_performing_teachers view
 const topTeachers = [
-  { name: "Dr. Sarah Johnson", responses: 456, rate: 92 },
-  { name: "Prof. Michael Chen", responses: 389, rate: 88 },
-  { name: "Dr. Emily Rodriguez", responses: 345, rate: 85 },
-  { name: "Prof. David Kim", responses: 312, rate: 82 },
-  { name: "Dr. Lisa Thompson", responses: 287, rate: 79 },
+  { id: "1", name: "Dr. Sarah Johnson", email: "sarah.j@university.edu", institution: "MIT", plan: "premium", totalSessions: 45, totalResponses: 892, avgRating: 4.8 },
+  { id: "2", name: "Prof. Michael Chen", email: "m.chen@stanford.edu", institution: "Stanford", plan: "premium", totalSessions: 38, totalResponses: 756, avgRating: 4.7 },
+  { id: "3", name: "Dr. Emily Rodriguez", email: "emily.r@berkeley.edu", institution: "UC Berkeley", plan: "premium", totalSessions: 32, totalResponses: 645, avgRating: 4.6 },
+  { id: "4", name: "Prof. David Kim", email: "d.kim@caltech.edu", institution: "Caltech", plan: "free", totalSessions: 28, totalResponses: 520, avgRating: 4.5 },
+  { id: "5", name: "Dr. Lisa Thompson", email: "l.thompson@harvard.edu", institution: "Harvard", plan: "premium", totalSessions: 25, totalResponses: 487, avgRating: 4.4 },
 ]
 
+// Recent activity matching recent_activity view
 const recentActivity = [
-  { action: "New session created", teacher: "Dr. Sarah Johnson", time: "2 mins ago", type: "session" },
-  { action: "Feedback collected", teacher: "Prof. Michael Chen", time: "15 mins ago", type: "feedback" },
-  { action: "Teacher registered", teacher: "Dr. James Wilson", time: "1 hour ago", type: "user" },
-  { action: "Session completed", teacher: "Dr. Emily Rodriguez", time: "2 hours ago", type: "session" },
-  { action: "Report generated", teacher: "Prof. David Kim", time: "3 hours ago", type: "report" },
+  { id: "1", action: "session_created", userName: "Dr. Sarah Johnson", userPlan: "premium", time: "2 mins ago", metadata: { sessionName: "Mid-Semester Feedback" } },
+  { id: "2", action: "responses_received", userName: "Prof. Michael Chen", userPlan: "premium", time: "15 mins ago", metadata: { count: 45 } },
+  { id: "3", action: "user_registered", userName: "Dr. James Wilson", userPlan: "free", time: "1 hour ago", metadata: { institution: "Yale" } },
+  { id: "4", action: "session_completed", userName: "Dr. Emily Rodriguez", userPlan: "premium", time: "2 hours ago", metadata: { responses: 82 } },
+  { id: "5", action: "plan_upgraded", userName: "Prof. Anna Lee", userPlan: "premium", time: "3 hours ago", metadata: { from: "free", to: "premium" } },
+  { id: "6", action: "ai_insights_generated", userName: "Dr. Sarah Johnson", userPlan: "premium", time: "4 hours ago", metadata: { course: "CS401" } },
 ]
 
-export default function AnalyticsPage() {
+// Platform sentiment (aggregated from all analytics_reports)
+const platformSentiment = {
+  positive: 76,
+  neutral: 17,
+  negative: 7,
+}
+
+export default function SuperAdminAnalyticsPage() {
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const maxResponses = Math.max(...monthlyData.map((d) => d.responses))
+
+  const maxResponses = Math.max(...monthlyTrends.map((d) => d.responses))
+
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case "session_created": return Calendar
+      case "responses_received": return MessageSquare
+      case "user_registered": return UserPlus
+      case "session_completed": return BookOpen
+      case "plan_upgraded": return Crown
+      case "ai_insights_generated": return Brain
+      default: return Activity
+    }
+  }
+
+  const getActivityColor = (action: string) => {
+    switch (action) {
+      case "session_created": return "bg-blue-100 text-blue-600"
+      case "responses_received": return "bg-emerald-100 text-emerald-600"
+      case "user_registered": return "bg-violet-100 text-violet-600"
+      case "session_completed": return "bg-indigo-100 text-indigo-600"
+      case "plan_upgraded": return "bg-amber-100 text-amber-600"
+      case "ai_insights_generated": return "bg-pink-100 text-pink-600"
+      default: return "bg-slate-100 text-slate-600"
+    }
+  }
+
+  const getActivityText = (activity: typeof recentActivity[0]) => {
+    switch (activity.action) {
+      case "session_created": return `Created session "${activity.metadata.sessionName}"`
+      case "responses_received": return `Received ${activity.metadata.count} new responses`
+      case "user_registered": return `New teacher from ${activity.metadata.institution}`
+      case "session_completed": return `Session completed with ${activity.metadata.responses} responses`
+      case "plan_upgraded": return `Upgraded from ${activity.metadata.from} to ${activity.metadata.to}`
+      case "ai_insights_generated": return `Generated AI insights for ${activity.metadata.course}`
+      default: return activity.action
+    }
+  }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
-      <div className="fixed inset-0 bg-grid-small [mask-image:radial-gradient(ellipse_at_center,white,transparent_80%)]" />
-      <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="#10b981" />
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Ambient Background Effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed" />
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed-2" />
+      </div>
 
       <Sidebar role="super-admin" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64">
+      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64 z-10">
         <Header userName="Admin User" userEmail="admin@crs.com" onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {/* Page Title */}
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 p-2.5 shadow-lg">
-                  <BarChart3 className="h-5 w-5 text-white" />
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg">
+                    <BarChart3 className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                    Platform Analytics
+                  </h1>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Analytics</h1>
+                <p className="text-slate-500">System-wide insights and metrics</p>
               </div>
-              <p className="text-slate-500 text-sm">System-wide insights and metrics</p>
+              <div className="flex gap-3">
+                <Button variant="outline" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Last 6 months
+                </Button>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Export Report
+                </Button>
+              </div>
             </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export Report
-            </Button>
-          </div>
 
-          {/* Overview Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {overviewStats.map((stat, idx) => (
-              <div key={idx} className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-input">
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`p-2 rounded-lg bg-gradient-to-br ${stat.color} shadow-sm`}>
-                    <stat.icon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+            {/* Overview Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Responses */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-50">
+                    <MessageSquare className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <div className={`flex items-center gap-1 text-xs font-medium ${stat.trend === "up" ? "text-emerald-600" : "text-red-500"}`}>
-                    {stat.trend === "up" ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                    {stat.change}
-                  </div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <ArrowUpRight className="w-3 h-3" />
+                    +12.5%
+                  </span>
                 </div>
-                <p className="text-xs text-slate-500 mb-1">{stat.title}</p>
-                <p className="text-xl sm:text-2xl font-bold text-slate-900">{stat.value}</p>
+                <p className="text-3xl font-bold text-slate-900">{systemStats.totalResponses.toLocaleString()}</p>
+                <p className="text-sm text-slate-500">Total Responses</p>
+                <p className="text-xs text-slate-400 mt-1">Across all teachers</p>
               </div>
-            ))}
-          </div>
 
-          <div className="grid lg:grid-cols-3 gap-6 mb-6">
-            {/* Chart */}
-            <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white shadow-input overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Response Trends</h2>
-                    <p className="text-sm text-slate-500">Monthly response collection</p>
+              {/* Active Teachers */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-50">
+                    <Users className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <Badge className="bg-emerald-100 text-emerald-700">Last 6 months</Badge>
+                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <ArrowUpRight className="w-3 h-3" />
+                    +{systemStats.newTeachersWeek} this week
+                  </span>
                 </div>
+                <p className="text-3xl font-bold text-slate-900">{systemStats.totalTeachers}</p>
+                <p className="text-sm text-slate-500">Total Teachers</p>
+                <p className="text-xs text-slate-400 mt-1">{systemStats.activeTeachers} active</p>
               </div>
-              <div className="p-4 sm:p-6">
-                <div className="flex items-end justify-between gap-2 h-48">
-                  {monthlyData.map((data, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                      <span className="text-xs font-medium text-slate-700">{data.responses.toLocaleString()}</span>
-                      <div
-                        className="w-full max-w-[40px] bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-lg hover:from-emerald-600 hover:to-teal-500 transition-colors"
-                        style={{ height: `${(data.responses / maxResponses) * 140}px` }}
-                      />
-                      <span className="text-xs text-slate-500">{data.month}</span>
-                    </div>
+
+              {/* Platform Rating */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-amber-50">
+                    <Star className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <ArrowUpRight className="w-3 h-3" />
+                    +0.2
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <p className="text-3xl font-bold text-slate-900">{systemStats.platformAvgRating.toFixed(1)}</p>
+                  <span className="text-sm text-slate-500">/ 5.0</span>
+                </div>
+                <p className="text-sm text-slate-500">Platform Avg Rating</p>
+                <div className="flex gap-0.5 mt-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-4 h-4 ${
+                        star <= Math.round(systemStats.platformAvgRating)
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-slate-200"
+                      }`}
+                    />
                   ))}
                 </div>
               </div>
+
+              {/* Monthly Revenue */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2.5 rounded-xl bg-violet-50">
+                    <DollarSign className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <Crown className="w-3 h-3" />
+                    {systemStats.premiumUsers} premium
+                  </span>
+                </div>
+                <p className="text-3xl font-bold text-slate-900">${systemStats.estimatedMrr}</p>
+                <p className="text-sm text-slate-500">Estimated MRR</p>
+                <p className="text-xs text-slate-400 mt-1">{systemStats.customUsers} custom plans</p>
+              </div>
             </div>
 
-            {/* Top Teachers */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-input overflow-hidden">
-              <div className="p-4 sm:p-6 border-b border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-900">Top Performers</h2>
-                <p className="text-sm text-slate-500">By response rate</p>
-              </div>
-              <div className="p-4 sm:p-6 space-y-4">
-                {topTeachers.map((teacher, idx) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-xs font-bold">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{teacher.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full" style={{ width: `${teacher.rate}%` }} />
-                        </div>
-                        <span className="text-xs font-medium text-slate-600">{teacher.rate}%</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - 2/3 width */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Response Trends Chart */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-50 rounded-xl">
+                        <TrendingUp className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">Response Trends</h3>
+                        <p className="text-sm text-slate-500">Monthly response collection across platform</p>
                       </div>
                     </div>
+                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Last 6 months</Badge>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          {/* Recent Activity */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-input overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-slate-100">
-              <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
-              <p className="text-sm text-slate-500">Latest system events</p>
-            </div>
-            <div className="p-4 sm:p-6 space-y-3">
-              {recentActivity.map((activity, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    activity.type === "session" ? "bg-blue-100 text-blue-600" :
-                    activity.type === "feedback" ? "bg-emerald-100 text-emerald-600" :
-                    activity.type === "user" ? "bg-violet-100 text-violet-600" : "bg-amber-100 text-amber-600"
-                  }`}>
-                    {activity.type === "session" ? <Calendar className="h-5 w-5" /> :
-                     activity.type === "feedback" ? <MessageSquare className="h-5 w-5" /> :
-                     activity.type === "user" ? <Users className="h-5 w-5" /> : <BarChart3 className="h-5 w-5" />}
+                  {/* Bar chart */}
+                  <div className="flex items-end gap-4 h-48 mb-4">
+                    {monthlyTrends.map((data) => (
+                      <div key={data.month} className="flex-1 flex flex-col items-center gap-2">
+                        <span className="text-xs font-medium text-slate-600">{data.responses.toLocaleString()}</span>
+                        <div
+                          className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-lg transition-all hover:from-emerald-600 hover:to-teal-500 cursor-pointer"
+                          style={{ height: `${(data.responses / maxResponses) * 140}px` }}
+                        />
+                        <span className="text-sm text-slate-500">{data.month}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900">{activity.action}</p>
-                    <p className="text-xs text-slate-500">{activity.teacher}</p>
+
+                  <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {monthlyTrends.reduce((sum, m) => sum + m.responses, 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-slate-500">Total Responses</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {monthlyTrends.reduce((sum, m) => sum + m.sessions, 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-slate-500">Sessions Created</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900">{systemStats.activeSessions}</p>
+                      <p className="text-xs text-slate-500">Currently Active</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-slate-400">{activity.time}</span>
                 </div>
-              ))}
+
+                {/* Top Performing Teachers */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-violet-50 rounded-xl">
+                        <Users className="w-5 h-5 text-violet-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">Top Performing Teachers</h3>
+                        <p className="text-sm text-slate-500">Ranked by total responses collected</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                      onClick={() => router.push("/super-admin/teachers")}
+                    >
+                      View All
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {topTeachers.map((teacher, idx) => (
+                      <div
+                        key={teacher.id}
+                        className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer group"
+                        onClick={() => router.push(`/super-admin/teachers/${teacher.id}`)}
+                      >
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                          idx === 0 ? "bg-gradient-to-br from-amber-400 to-amber-600" :
+                          idx === 1 ? "bg-gradient-to-br from-slate-400 to-slate-500" :
+                          idx === 2 ? "bg-gradient-to-br from-amber-600 to-amber-800" :
+                          "bg-gradient-to-br from-slate-300 to-slate-400"
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-slate-900 truncate">{teacher.name}</h4>
+                            {teacher.plan === "premium" && (
+                              <Badge className="bg-violet-100 text-violet-700 text-xs">Premium</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-500 truncate">{teacher.institution}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-slate-900">{teacher.totalResponses.toLocaleString()}</p>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            <span className="text-sm text-slate-500">{teacher.avgRating}</span>
+                            <span className="text-slate-300 mx-1">·</span>
+                            <span className="text-sm text-slate-500">{teacher.totalSessions} sessions</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Platform Sentiment */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-indigo-50 rounded-xl">
+                        <Brain className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900">Platform-Wide Sentiment</h3>
+                        <p className="text-sm text-slate-500">AI-analyzed feedback across all courses</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      AI Powered
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="text-center p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                      <div className="w-3 h-3 bg-emerald-500 rounded-full mx-auto mb-2" />
+                      <p className="text-3xl font-bold text-emerald-700">{platformSentiment.positive}%</p>
+                      <p className="text-sm text-emerald-600 font-medium">Positive</p>
+                    </div>
+                    <div className="text-center p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                      <div className="w-3 h-3 bg-amber-500 rounded-full mx-auto mb-2" />
+                      <p className="text-3xl font-bold text-amber-700">{platformSentiment.neutral}%</p>
+                      <p className="text-sm text-amber-600 font-medium">Neutral</p>
+                    </div>
+                    <div className="text-center p-4 rounded-2xl bg-red-50 border border-red-100">
+                      <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-2" />
+                      <p className="text-3xl font-bold text-red-700">{platformSentiment.negative}%</p>
+                      <p className="text-sm text-red-600 font-medium">Negative</p>
+                    </div>
+                  </div>
+
+                  <div className="h-4 rounded-full overflow-hidden flex">
+                    <div className="bg-emerald-500" style={{ width: `${platformSentiment.positive}%` }} />
+                    <div className="bg-amber-500" style={{ width: `${platformSentiment.neutral}%` }} />
+                    <div className="bg-red-500" style={{ width: `${platformSentiment.negative}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - 1/3 width */}
+              <div className="space-y-6">
+                {/* Plan Distribution */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-violet-50 rounded-xl">
+                      <Crown className="w-5 h-5 text-violet-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900">Plan Distribution</h3>
+                      <p className="text-sm text-slate-500">{systemStats.totalTeachers} total users</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {planDistribution.map((plan) => (
+                      <div key={plan.plan}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-slate-700">{plan.plan}</span>
+                          <span className="text-sm text-slate-500">{plan.count} users ({plan.percentage}%)</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${plan.color}`} style={{ width: `${plan.percentage}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Conversion Rate</span>
+                      <span className="text-lg font-bold text-emerald-600">
+                        {((systemStats.premiumUsers + systemStats.customUsers) / systemStats.totalTeachers * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-50 rounded-xl">
+                        <Activity className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <h3 className="font-bold text-slate-900">Recent Activity</h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {recentActivity.map((activity) => {
+                      const Icon = getActivityIcon(activity.action)
+                      return (
+                        <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                          <div className={`p-2 rounded-lg ${getActivityColor(activity.action)}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900 truncate">{activity.userName}</p>
+                            <p className="text-xs text-slate-500 truncate">{getActivityText(activity)}</p>
+                          </div>
+                          <span className="text-xs text-slate-400 whitespace-nowrap">{activity.time}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <Button variant="outline" className="w-full mt-4">
+                    View All Activity
+                  </Button>
+                </div>
+
+                {/* Quick Stats Card */}
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Zap className="w-5 h-5" />
+                    <h3 className="font-bold">System Status</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-100">Active Sessions</span>
+                      <span className="font-bold">{systemStats.activeSessions}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-100">Total Courses</span>
+                      <span className="font-bold">{systemStats.totalCourses}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-100">Completed Sessions</span>
+                      <span className="font-bold">{systemStats.completedSessions.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-emerald-100">This Month</span>
+                      <span className="font-bold">+{monthlyTrends[monthlyTrends.length - 1].responses.toLocaleString()} responses</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </main>

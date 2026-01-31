@@ -95,21 +95,30 @@ export default function AuthLayout({
       {/* Background Layer */}
       <div className="fixed inset-0 aurora-bg -z-10" />
       <div id="auth-spotlight" className="auth-spotlight -z-10" />
+      {/* Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:4rem_4rem]">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-transparent to-purple-50/80"></div>
+      </div>
 
+      <div className="absolute top-6 left-6 z-10">
+        <Link
+          href="/"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200 hover:border-[#468cfe] text-slate-700 hover:text-[#468cfe] font-semibold text-sm shadow-sm hover:shadow-md transition-all group"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          Back
+        </Link>
+      </div>
 
       {/* Orbs */}
       <div className="floating-orb w-96 h-96 bg-blue-400/20 top-0 left-0" />
       <div className="floating-orb w-80 h-80 bg-violet-400/20 bottom-0 right-0" style={{ animationDelay: '2s' }} />
       <div className="floating-orb w-64 h-64 bg-indigo-400/20 top-1/2 left-1/2" style={{ animationDelay: '4s' }} />
+      {/* Floating Gradient Orbs */}
+      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
 
       <div className="relative z-10 w-full max-w-md p-6">
-        <Link
-          href="/"
-          className="group mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          Back to home
-        </Link>
 
         {/* Logo/Header */}
         <div className="text-center mb-8">

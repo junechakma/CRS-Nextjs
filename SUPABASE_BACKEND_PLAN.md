@@ -47,12 +47,12 @@ CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('super_admin', 'teacher', 'student')),
+  role TEXT NOT NULL CHECK (role IN ('super_admin', 'teacher')),
   institution TEXT,
   department TEXT,
   avatar_url TEXT,
   plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'premium', 'custom')),
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive','banned')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -169,7 +169,7 @@ CREATE TABLE sessions (
   template_id UUID REFERENCES question_templates(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   access_code TEXT UNIQUE NOT NULL,
-  status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'completed')),
+  status TEXT DEFAULT 'live' CHECK (status IN ('scheduled', 'live', 'completed')),
   start_time TIMESTAMPTZ,
   end_time TIMESTAMPTZ,
   scheduled_date DATE,

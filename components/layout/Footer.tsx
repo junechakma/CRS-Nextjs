@@ -33,7 +33,7 @@ export function Footer({ onAboutClick }: FooterProps) {
                             <Link href="/login" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
                                 Admin Login
                             </Link>
-                            <Link href="/register/university-admin" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
+                            <Link href="/register" className="block text-slate-600 hover:text-[#468cfe] text-sm transition-colors">
                                 Register
                             </Link>
                         </div>
