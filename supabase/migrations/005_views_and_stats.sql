@@ -248,8 +248,8 @@ SELECT
   COALESCE(SUM(s.response_count), 0)::INTEGER AS total_responses,
   COALESCE(AVG(s.avg_rating), 0)::DECIMAL(3,2) AS avg_rating,
   CASE
-    WHEN COALESCE(SUM(s.total_students), 0) > 0
-    THEN ROUND((COALESCE(SUM(s.response_count), 0)::DECIMAL / SUM(s.total_students)) * 100, 1)
+    WHEN COALESCE(SUM(s.expected_students), 0) > 0
+    THEN ROUND((COALESCE(SUM(s.response_count), 0)::DECIMAL / SUM(s.expected_students)) * 100, 1)
     ELSE 0
   END AS avg_response_rate
 FROM users u

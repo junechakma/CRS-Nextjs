@@ -1,9 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { X } from "lucide-react"
+import { X, LogOut } from "lucide-react"
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +19,7 @@ import {
   CreditCard,
 } from "lucide-react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
 
 interface SidebarProps {
   role: "super-admin" | "teacher"
@@ -48,6 +50,19 @@ const teacherNavigation = [
 export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const navigation = role === "super-admin" ? superAdminNavigation : teacherNavigation
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const supabase = createClient()
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Logout error:', error)
+      setIsLoggingOut(false)
+    }
+  }
 
   return (
     <>
@@ -113,8 +128,19 @@ export function Sidebar({ role, isOpen = false, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Role Badge */}
-        <div className="p-4 border-t border-slate-100">
+        {/* Logout & Role Badge */}
+        <div className="p-4 border-t border-slate-100 space-y-3">
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+          </button>
+
+          {/* Role Badge */}
           <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 rounded-lg">
             <div className="relative">
               <div className="w-2 h-2 bg-emerald-500 rounded-full" />

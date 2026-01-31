@@ -55,19 +55,26 @@ export async function updateSession(request: NextRequest) {
   )
 
   if (isAuthPath && user) {
-    // Check if user has completed their profile
-    const { data: profile } = await supabase
-      .from('users')
-      .select('name, institution')
-      .eq('id', user.id)
-      .single()
+    try {
+      // Check if user has completed their profile
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('name, institution, role')
+        .eq('id', user.id)
+        .single()
 
-    // If profile is incomplete, let them through to complete it
-    // Otherwise redirect to dashboard
-    if (profile?.name && profile?.institution) {
+      // If profile fetch fails or profile incomplete, let them through
+      if (error || !profile?.name || !profile?.institution) {
+        return supabaseResponse
+      }
+
+      // Profile is complete, redirect to appropriate dashboard
       const url = request.nextUrl.clone()
-      url.pathname = '/teacher'
+      url.pathname = profile.role === 'super_admin' ? '/super-admin' : '/teacher'
       return NextResponse.redirect(url)
+    } catch {
+      // If anything fails, let them through to complete profile
+      return supabaseResponse
     }
   }
 

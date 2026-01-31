@@ -15,6 +15,7 @@ export default function LoginPage() {
     const [error, setError] = useState("")
     const [message, setMessage] = useState("")
     const [showProfileDialog, setShowProfileDialog] = useState(false)
+    const [loggedInUser, setLoggedInUser] = useState<{ id: string; email: string } | null>(null)
 
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -56,22 +57,29 @@ export default function LoginPage() {
                 return
             }
 
-            if (data.user) {
-                // Check if user profile is complete
-                const { data: profile } = await supabase
+            if (data.user && data.session) {
+                // Store user info for profile dialog
+                const userInfo = { id: data.user.id, email: data.user.email || '' }
+                setLoggedInUser(userInfo)
+
+                // Check if profile is complete
+                const { data: profile, error: profileError } = await supabase
                     .from('users')
-                    .select('name, institution')
+                    .select('name, institution, role')
                     .eq('id', data.user.id)
                     .single()
 
-                if (!profile?.name || !profile?.institution) {
-                    // Show profile completion dialog
+                if (profileError || !profile?.name || !profile?.institution) {
+                    // Profile incomplete, show dialog
                     setShowProfileDialog(true)
                 } else {
-                    // Profile is complete, redirect to dashboard
-                    const redirectTo = searchParams.get('redirect') || '/teacher'
-                    router.push(redirectTo)
+                    // Profile complete, redirect to dashboard
+                    const redirectTo = profile.role === 'super_admin' ? '/super-admin' : '/teacher'
+                    window.location.href = searchParams.get('redirect') || redirectTo
                 }
+            } else if (data.user) {
+                setLoggedInUser({ id: data.user.id, email: data.user.email || '' })
+                setShowProfileDialog(true)
             }
         } catch (err) {
             console.error('Login error:', err)
@@ -84,7 +92,8 @@ export default function LoginPage() {
     const handleProfileComplete = () => {
         setShowProfileDialog(false)
         const redirectTo = searchParams.get('redirect') || '/teacher'
-        router.push(redirectTo)
+        // Use window.location for full page navigation to sync cookies properly
+        window.location.href = redirectTo
     }
 
     return (
@@ -218,6 +227,8 @@ export default function LoginPage() {
             <ProfileCompletionDialog
                 isOpen={showProfileDialog}
                 onComplete={handleProfileComplete}
+                userId={loggedInUser?.id}
+                userEmail={loggedInUser?.email}
             />
         </>
     )

@@ -39,16 +39,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = createClient()
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-    if (!error && data) {
-      setProfile(data as UserProfile)
+      if (!error && data) {
+        setProfile(data as UserProfile)
+      }
+      return data
+    } catch (err) {
+      console.error('Profile fetch error:', err)
+      return null
     }
-    return data
   }
 
   const refreshProfile = async () => {
@@ -82,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          // Don't await - let it run in background to avoid blocking
+          fetchProfile(session.user.id).catch(() => {})
         } else {
           setProfile(null)
         }

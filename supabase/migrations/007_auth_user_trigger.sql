@@ -6,14 +6,19 @@
 -- Function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  user_role TEXT;
 BEGIN
+  -- Get role from user metadata, default to 'teacher'
+  user_role := COALESCE(NEW.raw_user_meta_data->>'role', 'teacher');
+
   -- Insert a new user profile (with minimal data - name/institution to be filled later)
   INSERT INTO public.users (id, email, name, role, plan, status)
   VALUES (
     NEW.id,
     NEW.email,
     '', -- Name to be filled during profile completion
-    'teacher',
+    user_role,
     'free',
     'active'
   )

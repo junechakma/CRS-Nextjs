@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertCircle } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertCircle, Shield, GraduationCap } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 export default function RegisterPage() {
@@ -16,6 +16,7 @@ export default function RegisterPage() {
     const [error, setError] = useState("")
     const [success, setSuccess] = useState(false)
     const [agreedToTerms, setAgreedToTerms] = useState(false)
+    const [role, setRole] = useState<'teacher' | 'super_admin'>('teacher')
 
     const router = useRouter()
     const supabase = createClient()
@@ -65,6 +66,9 @@ export default function RegisterPage() {
                 password,
                 options: {
                     emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    data: {
+                        role: role,
+                    },
                 },
             })
 
@@ -181,6 +185,43 @@ export default function RegisterPage() {
                     >
                         Email address
                     </label>
+                </div>
+
+                {/* Role Selector */}
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Account Type</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setRole('teacher')}
+                            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                                role === 'teacher'
+                                    ? 'border-[#468cfe] bg-blue-50 text-[#468cfe]'
+                                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                            }`}
+                        >
+                            <GraduationCap className="w-5 h-5" />
+                            <div className="text-left">
+                                <p className="font-semibold text-sm">Teacher</p>
+                                <p className="text-xs opacity-70">Collect feedback</p>
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setRole('super_admin')}
+                            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
+                                role === 'super_admin'
+                                    ? 'border-violet-500 bg-violet-50 text-violet-600'
+                                    : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                            }`}
+                        >
+                            <Shield className="w-5 h-5" />
+                            <div className="text-left">
+                                <p className="font-semibold text-sm">Super Admin</p>
+                                <p className="text-xs opacity-70">Manage platform</p>
+                            </div>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Password Input with Floating Label Animation */}

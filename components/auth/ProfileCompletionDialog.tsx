@@ -3,22 +3,20 @@
 import { useState } from "react"
 import { User, Building2, ArrowRight, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { useAuth } from "@/lib/context/AuthContext"
-import { useRouter } from "next/navigation"
 
 interface ProfileCompletionDialogProps {
   isOpen: boolean
   onComplete: () => void
+  userId?: string
+  userEmail?: string
 }
 
-export default function ProfileCompletionDialog({ isOpen, onComplete }: ProfileCompletionDialogProps) {
+export default function ProfileCompletionDialog({ isOpen, onComplete, userId, userEmail }: ProfileCompletionDialogProps) {
   const [name, setName] = useState("")
   const [institution, setInstitution] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const { user, refreshProfile } = useAuth()
-  const router = useRouter()
   const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,9 +28,18 @@ export default function ProfileCompletionDialog({ isOpen, onComplete }: ProfileC
       return
     }
 
-    if (!user) {
-      setError("User not found. Please try logging in again.")
-      return
+    // Get user ID from props or from current session
+    let currentUserId = userId
+    let currentUserEmail = userEmail
+
+    if (!currentUserId) {
+      const { data: { user: sessionUser } } = await supabase.auth.getUser()
+      if (!sessionUser) {
+        setError("User not found. Please try logging in again.")
+        return
+      }
+      currentUserId = sessionUser.id
+      currentUserEmail = sessionUser.email
     }
 
     setIsLoading(true)
@@ -41,26 +48,29 @@ export default function ProfileCompletionDialog({ isOpen, onComplete }: ProfileC
       // Update the user profile in the database
       const { error: updateError } = await supabase
         .from('users')
-        .upsert({
-          id: user.id,
-          email: user.email,
+        .update({
           name: name.trim(),
           institution: institution.trim(),
-          role: 'teacher',
           updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
         })
+        .eq('id', currentUserId)
 
       if (updateError) {
         throw updateError
       }
 
-      // Refresh the profile in context
-      await refreshProfile()
+      // Get the user's role to determine redirect
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', currentUserId)
+        .single()
 
       onComplete()
-      router.push('/teacher')
+
+      // Redirect based on role
+      const redirectTo = profile?.role === 'super_admin' ? '/super-admin' : '/teacher'
+      window.location.href = redirectTo
     } catch (err) {
       console.error('Error updating profile:', err)
       setError("Failed to update profile. Please try again.")
