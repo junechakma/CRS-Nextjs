@@ -82,30 +82,17 @@ export default function AnalyticsClient({ data }: AnalyticsClientProps) {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg">
-              <BarChart3 className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-              Platform Analytics
-            </h1>
-          </div>
-          <p className="text-slate-500">System-wide insights and metrics</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">
-            <Calendar className="w-4 h-4" />
-            Last 6 months
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export Report
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" className="gap-2">
+          <Calendar className="w-4 h-4" />
+          Last 6 months
+        </Button>
+        <Button variant="outline" className="gap-2">
+          <Download className="w-4 h-4" />
+          Export Report
+        </Button>
       </div>
 
       {/* Overview Stats Grid */}

@@ -588,6 +588,96 @@ export async function toggleBaseTemplateStatus() {
 }
 
 // ============================================================================
+// CLO SET ACTIONS (Teacher)
+// ============================================================================
+
+interface ActionResult {
+  success: boolean
+  error?: string
+  data?: any
+}
+
+export async function createCLOSet(data: {
+  userId: string
+  courseId: string
+  name: string
+  description: string
+  color: string
+}): Promise<ActionResult> {
+  try {
+    const supabase = await createClient()
+
+    const { data: cloSet, error } = await supabase
+      .from('clo_sets')
+      .insert({
+        user_id: data.userId,
+        course_id: data.courseId,
+        name: data.name,
+        description: data.description,
+        color: data.color,
+        status: 'draft',
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    revalidatePath('/teacher/clo-mapping')
+    return { success: true, data: cloSet }
+  } catch (error: any) {
+    console.error('Error creating CLO set:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function updateCLOSet(id: string, data: {
+  name?: string
+  description?: string
+  color?: string
+  status?: string
+}): Promise<ActionResult> {
+  try {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('clo_sets')
+      .update({
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/teacher/clo-mapping')
+    revalidatePath(`/teacher/clo-mapping/${id}`)
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error updating CLO set:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function deleteCLOSet(id: string): Promise<ActionResult> {
+  try {
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('clo_sets')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    revalidatePath('/teacher/clo-mapping')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting CLO set:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// ============================================================================
 // ACTIVITY LOGGING
 // ============================================================================
 

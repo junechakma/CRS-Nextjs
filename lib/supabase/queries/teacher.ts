@@ -474,6 +474,566 @@ export async function getBaseTemplateStats() {
 }
 
 // ============================================================================
+// SEMESTERS QUERIES
+// ============================================================================
+
+export interface SemesterData {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  status: 'current' | 'upcoming' | 'completed'
+  courses: number
+  students: number
+  sessions: number
+  progress: number
+}
+
+/**
+ * Get all semesters for a teacher
+ */
+export async function getTeacherSemesters(userId: string): Promise<SemesterData[]> {
+  const supabase = await createClient()
+
+  // Get semesters with aggregated data
+  const { data: semesters } = await supabase
+    .from('semesters')
+    .select('*')
+    .eq('user_id', userId)
+    .order('start_date', { ascending: false })
+
+  if (!semesters) return []
+
+  // For each semester, get counts
+  const semestersWithStats = await Promise.all(
+    semesters.map(async (semester) => {
+      // Get courses count for this semester
+      const { count: coursesCount } = await supabase
+        .from('courses')
+        .select('*', { count: 'exact', head: true })
+        .eq('semester_id', semester.id)
+
+      // Get total students from courses in this semester
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('expected_students')
+        .eq('semester_id', semester.id)
+
+      const studentsCount = courses?.reduce((acc, c) => acc + (c.expected_students || 0), 0) || 0
+
+      // Get sessions count for courses in this semester
+      const { data: semesterCourses } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('semester_id', semester.id)
+
+      const courseIds = semesterCourses?.map(c => c.id) || []
+
+      let sessionsCount = 0
+      if (courseIds.length > 0) {
+        const { count } = await supabase
+          .from('sessions')
+          .select('*', { count: 'exact', head: true })
+          .in('course_id', courseIds)
+
+        sessionsCount = count || 0
+      }
+
+      // Calculate progress based on dates
+      const now = new Date()
+      const start = new Date(semester.start_date)
+      const end = new Date(semester.end_date)
+
+      let progress = 0
+      if (now > end) {
+        progress = 100
+      } else if (now > start) {
+        const total = end.getTime() - start.getTime()
+        const elapsed = now.getTime() - start.getTime()
+        progress = Math.round((elapsed / total) * 100)
+      }
+
+      return {
+        id: semester.id,
+        name: semester.name,
+        start_date: semester.start_date,
+        end_date: semester.end_date,
+        status: semester.status,
+        courses: coursesCount || 0,
+        students: studentsCount,
+        sessions: sessionsCount,
+        progress,
+      }
+    })
+  )
+
+  return semestersWithStats
+}
+
+// ============================================================================
+// COURSES QUERIES
+// ============================================================================
+
+export interface CourseData {
+  id: string
+  name: string
+  code: string
+  semester: string
+  semester_id: string | null
+  students: number
+  sessions: number
+  avg_rating: number
+  last_activity: string | null
+  status: 'active' | 'archived'
+  color: string
+}
+
+/**
+ * Get all courses for a teacher
+ */
+export async function getTeacherCourses(userId: string): Promise<CourseData[]> {
+  const supabase = await createClient()
+
+  // Get courses with semester information
+  const { data: courses } = await supabase
+    .from('courses')
+    .select(`
+      id,
+      name,
+      code,
+      color,
+      status,
+      expected_students,
+      last_activity_at,
+      semester_id,
+      semesters(name)
+    `)
+    .eq('user_id', userId)
+    .order('last_activity_at', { ascending: false })
+
+  if (!courses) return []
+
+  // For each course, get sessions count and avg rating
+  const coursesWithStats = await Promise.all(
+    courses.map(async (course) => {
+      // Get sessions count
+      const { count: sessionsCount } = await supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', course.id)
+
+      // Get avg rating from completed sessions
+      const { data: sessionStats } = await supabase
+        .from('sessions')
+        .select('avg_rating')
+        .eq('course_id', course.id)
+        .eq('status', 'completed')
+        .not('avg_rating', 'is', null)
+
+      const avgRating = sessionStats && sessionStats.length > 0
+        ? sessionStats.reduce((acc, s) => acc + (s.avg_rating || 0), 0) / sessionStats.length
+        : 0
+
+      const semester = course.semesters as unknown as { name: string } | null
+
+      return {
+        id: course.id,
+        name: course.name,
+        code: course.code,
+        semester: semester?.name || 'No Semester',
+        semester_id: course.semester_id,
+        students: course.expected_students || 0,
+        sessions: sessionsCount || 0,
+        avg_rating: Math.round(avgRating * 10) / 10,
+        last_activity: course.last_activity_at,
+        status: course.status === 'active' ? 'active' : 'archived',
+        color: course.color || 'indigo',
+      }
+    })
+  )
+
+  return coursesWithStats
+}
+
+/**
+ * Get semesters list (id and name) for dropdowns
+ */
+export async function getTeacherSemestersList(userId: string) {
+  const supabase = await createClient()
+
+  const { data: semesters } = await supabase
+    .from('semesters')
+    .select('id, name, status')
+    .eq('user_id', userId)
+    .order('start_date', { ascending: false })
+
+  return semesters || []
+}
+
+// ============================================================================
+// SESSIONS QUERIES
+// ============================================================================
+
+export interface SessionData {
+  id: string
+  name: string
+  course: string
+  courseCode: string
+  courseId: string
+  accessCode: string
+  status: 'live' | 'scheduled' | 'completed'
+  responses: number
+  total: number
+  startTime: string
+  endTime: string
+  date: string
+  duration: string
+  templateId: string
+}
+
+export interface SessionStats {
+  activeSessions: number
+  scheduledSessions: number
+  totalResponses: number
+  avgResponseRate: number
+}
+
+/**
+ * Get all sessions for a teacher
+ */
+export async function getTeacherSessions(userId: string): Promise<SessionData[]> {
+  const supabase = await createClient()
+
+  const { data: sessions } = await supabase
+    .from('sessions')
+    .select(`
+      id,
+      name,
+      access_code,
+      status,
+      response_count,
+      start_time,
+      end_time,
+      template_id,
+      courses(
+        id,
+        name,
+        code,
+        expected_students
+      )
+    `)
+    .eq('user_id', userId)
+    .order('start_time', { ascending: false })
+
+  if (!sessions) return []
+
+  const now = new Date()
+
+  return sessions.map(session => {
+    const course = session.courses as unknown as { id: string; name: string; code: string; expected_students: number } | null
+    const startTime = new Date(session.start_time)
+    const endTime = session.end_time ? new Date(session.end_time) : null
+
+    // Calculate duration/status text
+    let duration = ''
+    if (session.status === 'live') {
+      const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 60000)
+      duration = `${elapsed} min active`
+    } else if (session.status === 'scheduled') {
+      const timeUntil = Math.floor((startTime.getTime() - now.getTime()) / 60000)
+      if (timeUntil < 60) {
+        duration = `Starts in ${timeUntil}m`
+      } else if (timeUntil < 1440) {
+        duration = `Starts in ${Math.floor(timeUntil / 60)}h`
+      } else {
+        duration = 'Scheduled'
+      }
+    } else {
+      duration = 'Completed'
+    }
+
+    // Format date
+    let date = ''
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const sessionDate = new Date(startTime)
+    sessionDate.setHours(0, 0, 0, 0)
+    const diffDays = Math.floor((sessionDate.getTime() - today.getTime()) / 86400000)
+
+    if (diffDays === 0) date = 'Today'
+    else if (diffDays === 1) date = 'Tomorrow'
+    else if (diffDays === -1) date = 'Yesterday'
+    else date = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+    return {
+      id: session.id,
+      name: session.name,
+      course: course?.name || 'Unknown Course',
+      courseCode: course?.code || '',
+      courseId: course?.id || '',
+      accessCode: session.access_code,
+      status: session.status as 'live' | 'scheduled' | 'completed',
+      responses: session.response_count || 0,
+      total: course?.expected_students || 0,
+      startTime: startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+      endTime: endTime ? endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+      date,
+      duration,
+      templateId: session.template_id || '',
+    }
+  })
+}
+
+/**
+ * Get session statistics for a teacher
+ */
+export async function getTeacherSessionStats(userId: string): Promise<SessionStats> {
+  const supabase = await createClient()
+
+  // Get active sessions count
+  const { count: activeSessions } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'live')
+
+  // Get scheduled sessions count
+  const { count: scheduledSessions } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'scheduled')
+
+  // Get total responses from all sessions
+  const { count: totalResponses } = await supabase
+    .from('session_responses')
+    .select('*, sessions!inner(user_id)', { count: 'exact', head: true })
+    .eq('sessions.user_id', userId)
+
+  // Calculate average response rate
+  const { data: sessions } = await supabase
+    .from('sessions')
+    .select('response_count, courses(expected_students)')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+
+  let avgResponseRate = 0
+  if (sessions && sessions.length > 0) {
+    const rates = sessions
+      .map(s => {
+        const course = s.courses as unknown as { expected_students: number } | null
+        const expected = course?.expected_students || 0
+        const responses = s.response_count || 0
+        return expected > 0 ? (responses / expected) * 100 : 0
+      })
+      .filter(rate => rate > 0)
+
+    if (rates.length > 0) {
+      avgResponseRate = Math.round(rates.reduce((acc, rate) => acc + rate, 0) / rates.length)
+    }
+  }
+
+  return {
+    activeSessions: activeSessions || 0,
+    scheduledSessions: scheduledSessions || 0,
+    totalResponses: totalResponses || 0,
+    avgResponseRate,
+  }
+}
+
+// ============================================================================
+// CLO MAPPING QUERIES
+// ============================================================================
+
+export interface CLOSetData {
+  id: string
+  name: string
+  description: string
+  courseId: string
+  courseName: string
+  courseCode: string
+  cloCount: number
+  mappedQuestions: number
+  createdAt: string
+  status: 'active' | 'draft'
+  color: string
+}
+
+export interface CLOData {
+  id: string
+  cloSetId: string
+  code: string
+  description: string
+  bloomLevel: string | null
+  mappedQuestions: number
+  avgRelevance: number
+  coveragePercentage: number
+  orderIndex: number
+}
+
+export interface CLOQuestionMapping {
+  id: string
+  cloId: string
+  questionId: string
+  relevanceScore: number
+  quality: 'perfect' | 'good' | 'needs_improvement' | 'unmapped'
+  aiReasoning: string | null
+  confidence: number
+}
+
+/**
+ * Get all CLO sets for a teacher
+ */
+export async function getTeacherCLOSets(userId: string): Promise<CLOSetData[]> {
+  const supabase = await createClient()
+
+  const { data: cloSets } = await supabase
+    .from('clo_sets')
+    .select(`
+      id,
+      name,
+      description,
+      color,
+      status,
+      clo_count,
+      mapped_questions,
+      created_at,
+      courses(
+        id,
+        name,
+        code
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (!cloSets) return []
+
+  return cloSets.map(set => {
+    const course = set.courses as unknown as { id: string; name: string; code: string } | null
+    return {
+      id: set.id,
+      name: set.name,
+      description: set.description || '',
+      courseId: course?.id || '',
+      courseName: course?.name || 'Unknown Course',
+      courseCode: course?.code || '',
+      cloCount: set.clo_count || 0,
+      mappedQuestions: set.mapped_questions || 0,
+      createdAt: getTimeAgo(set.created_at),
+      status: set.status as 'active' | 'draft',
+      color: set.color || 'indigo',
+    }
+  })
+}
+
+/**
+ * Get a single CLO set with details
+ */
+export async function getCLOSet(cloSetId: string, userId: string) {
+  const supabase = await createClient()
+
+  const { data: cloSet } = await supabase
+    .from('clo_sets')
+    .select(`
+      id,
+      name,
+      description,
+      color,
+      status,
+      clo_count,
+      mapped_questions,
+      created_at,
+      courses(
+        id,
+        name,
+        code
+      )
+    `)
+    .eq('id', cloSetId)
+    .eq('user_id', userId)
+    .single()
+
+  if (!cloSet) return null
+
+  const course = cloSet.courses as unknown as { id: string; name: string; code: string } | null
+
+  return {
+    id: cloSet.id,
+    name: cloSet.name,
+    description: cloSet.description || '',
+    courseId: course?.id || '',
+    courseName: course?.name || 'Unknown Course',
+    courseCode: course?.code || '',
+    cloCount: cloSet.clo_count || 0,
+    mappedQuestions: cloSet.mapped_questions || 0,
+    createdAt: getTimeAgo(cloSet.created_at),
+    status: cloSet.status as 'active' | 'draft',
+    color: cloSet.color || 'indigo',
+  }
+}
+
+/**
+ * Get CLOs for a CLO set
+ */
+export async function getCLOs(cloSetId: string): Promise<CLOData[]> {
+  const supabase = await createClient()
+
+  const { data: clos } = await supabase
+    .from('clos')
+    .select('*')
+    .eq('clo_set_id', cloSetId)
+    .order('order_index', { ascending: true })
+
+  if (!clos) return []
+
+  return clos.map(clo => ({
+    id: clo.id,
+    cloSetId: clo.clo_set_id,
+    code: clo.code,
+    description: clo.description,
+    bloomLevel: clo.bloom_level,
+    mappedQuestions: clo.mapped_questions || 0,
+    avgRelevance: parseFloat(clo.avg_relevance) || 0,
+    coveragePercentage: parseFloat(clo.coverage_percentage) || 0,
+    orderIndex: clo.order_index || 0,
+  }))
+}
+
+/**
+ * Get CLO question mappings for a CLO set
+ */
+export async function getCLOQuestionMappings(cloSetId: string): Promise<CLOQuestionMapping[]> {
+  const supabase = await createClient()
+
+  const { data: mappings } = await supabase
+    .from('clo_question_mappings')
+    .select(`
+      id,
+      clo_id,
+      question_id,
+      relevance_score,
+      quality,
+      ai_reasoning,
+      confidence,
+      clos!inner(clo_set_id)
+    `)
+    .eq('clos.clo_set_id', cloSetId)
+
+  if (!mappings) return []
+
+  return mappings.map(m => ({
+    id: m.id,
+    cloId: m.clo_id,
+    questionId: m.question_id,
+    relevanceScore: parseFloat(m.relevance_score) || 0,
+    quality: m.quality as 'perfect' | 'good' | 'needs_improvement' | 'unmapped',
+    aiReasoning: m.ai_reasoning,
+    confidence: parseFloat(m.confidence) || 0,
+  }))
+}
+
+// ============================================================================
 // ANALYTICS QUERIES
 // ============================================================================
 
