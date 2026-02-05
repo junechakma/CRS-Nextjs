@@ -1,9 +1,6 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar/sidebar"
-import { Header } from "@/components/layout/header/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -89,7 +86,6 @@ const platformSentiment = {
 
 export default function SuperAdminAnalyticsPage() {
   const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const maxResponses = Math.max(...monthlyTrends.map((d) => d.responses))
 
@@ -130,21 +126,7 @@ export default function SuperAdminAnalyticsPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Ambient Background Effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-cyan-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed-2" />
-      </div>
-
-      <Sidebar role="super-admin" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64 z-10">
-        <Header userName="Admin User" userEmail="admin@crs.com" onMenuClick={() => setSidebarOpen(true)} />
-
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
@@ -508,9 +490,6 @@ export default function SuperAdminAnalyticsPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </main>
-      </div>
     </div>
   )
 }

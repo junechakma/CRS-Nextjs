@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { Sidebar } from "@/components/layout/sidebar/sidebar"
-import { Header } from "@/components/layout/header/header"
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/lib/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import {
   User,
@@ -22,18 +22,14 @@ import {
   AlertCircle,
 } from "lucide-react"
 
-const profileData = {
-  name: "Admin User",
-  email: "admin@crs.com",
-  role: "Super Administrator",
-  joinedDate: "January 2024",
-  avatar: null,
-}
-
 export default function SettingsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const supabase = createClient()
+  const { profile, refreshProfile } = useAuth()
+
   const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState(profileData)
+  const [formName, setFormName] = useState("")
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   // Email change state
   const [newEmail, setNewEmail] = useState("")
@@ -50,9 +46,35 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const handleSave = () => {
-    setIsEditing(false)
-    // Save profile logic here
+  // Sync form name with profile
+  useEffect(() => {
+    if (profile?.name) {
+      setFormName(profile.name)
+    }
+  }, [profile?.name])
+
+  const handleSave = async () => {
+    if (!profile?.id) return
+
+    setProfileLoading(true)
+    setProfileMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ name: formName, updated_at: new Date().toISOString() })
+        .eq('id', profile.id)
+
+      if (error) throw error
+
+      setProfileMessage({ type: "success", text: "Profile updated successfully." })
+      setIsEditing(false)
+      refreshProfile()
+    } catch {
+      setProfileMessage({ type: "error", text: "Failed to update profile." })
+    } finally {
+      setProfileLoading(false)
+    }
   }
 
   const handleEmailChange = async (e: React.FormEvent) => {
@@ -61,12 +83,8 @@ export default function SettingsPage() {
     setEmailMessage(null)
 
     try {
-      // Supabase email update
-      // const { error } = await supabase.auth.updateUser({ email: newEmail })
-      // if (error) throw error
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { error } = await supabase.auth.updateUser({ email: newEmail })
+      if (error) throw error
 
       setEmailMessage({
         type: "success",
@@ -87,7 +105,6 @@ export default function SettingsPage() {
     e.preventDefault()
     setPasswordMessage(null)
 
-    // Validation
     if (newPassword.length < 8) {
       setPasswordMessage({
         type: "error",
@@ -107,12 +124,8 @@ export default function SettingsPage() {
     setPasswordLoading(true)
 
     try {
-      // Supabase password update
-      // const { error } = await supabase.auth.updateUser({ password: newPassword })
-      // if (error) throw error
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
 
       setPasswordMessage({
         type: "success",
@@ -124,92 +137,72 @@ export default function SettingsPage() {
     } catch {
       setPasswordMessage({
         type: "error",
-        text: "Failed to update password. Please check your current password.",
+        text: "Failed to update password.",
       })
     } finally {
       setPasswordLoading(false)
     }
   }
 
+  // Format the join date
+  const joinedDate = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : 'Unknown'
+
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Ambient Background Effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="meteor meteor-1" />
-        <div className="meteor meteor-2" />
-        <div className="meteor meteor-3" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-slate-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float" />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float-delayed-2" />
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      {/* Profile Header Card */}
+      <div className="hero-gradient rounded-3xl p-6 sm:p-8 relative overflow-hidden border border-slate-200/60 shadow-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-slate-200/50 to-blue-200/50 rounded-full filter blur-3xl -mr-20 -mt-20" />
 
-      <Sidebar
-        role="super-admin"
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+            {/* Avatar */}
+            <div className="relative group">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
+                {profile?.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'AU'}
+              </div>
+              <button className="absolute bottom-0 right-0 p-2 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
+                <Camera className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
 
-      <div className="relative flex-1 flex flex-col overflow-hidden lg:pl-64 z-10">
-        <Header
-          userName="Admin User"
-          userEmail="admin@crs.com"
-          onMenuClick={() => setSidebarOpen(true)}
-        />
-
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-            {/* Profile Header Card */}
-            <div className="hero-gradient rounded-3xl p-6 sm:p-8 relative overflow-hidden border border-slate-200/60 shadow-xl">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-slate-200/50 to-blue-200/50 rounded-full filter blur-3xl -mr-20 -mt-20" />
-
-              <div className="relative z-10">
-                <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
-                  {/* Avatar */}
-                  <div className="relative group">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-3xl font-bold shadow-xl">
-                      AU
-                    </div>
-                    <button className="absolute bottom-0 right-0 p-2 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 transition-colors opacity-0 group-hover:opacity-100">
-                      <Camera className="w-4 h-4 text-slate-600" />
-                    </button>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                        {profileData.name}
-                      </h1>
-                      <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">
-                        <Shield className="w-3 h-3 mr-1" />
-                        Super Admin
-                      </Badge>
-                    </div>
-                    <p className="text-slate-600 mb-1">{profileData.role}</p>
-                    <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
-                      <span className="flex items-center gap-1.5">
-                        <Mail className="w-4 h-4" />
-                        {profileData.email}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" />
-                        Joined {profileData.joinedDate}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Edit Button */}
-                  <Button
-                    variant="outline"
-                    className="gap-2 bg-white/80 backdrop-blur"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    Edit Profile
-                  </Button>
-                </div>
+            {/* Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                  {profile?.name || 'Admin User'}
+                </h1>
+                <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Super Admin
+                </Badge>
+              </div>
+              <p className="text-slate-600 mb-1">Super Administrator</p>
+              <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-4 h-4" />
+                  {profile?.email || 'admin@crs.com'}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  Joined {joinedDate}
+                </span>
               </div>
             </div>
+
+            {/* Edit Button */}
+            <Button
+              variant="outline"
+              className="gap-2 bg-white/80 backdrop-blur"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit Profile
+            </Button>
+          </div>
+        </div>
+      </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Profile Details */}
@@ -236,6 +229,21 @@ export default function SettingsPage() {
                   )}
                 </div>
 
+                {profileMessage && (
+                  <div className={`mb-4 flex items-center gap-2 p-3 rounded-xl text-sm ${
+                    profileMessage.type === "success"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      : "bg-red-50 text-red-700 border border-red-200"
+                  }`}>
+                    {profileMessage.type === "success" ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                    )}
+                    {profileMessage.text}
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -244,15 +252,13 @@ export default function SettingsPage() {
                     {isEditing ? (
                       <input
                         type="text"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-slate-300 focus:ring-2 focus:ring-slate-100 outline-none transition-all"
                       />
                     ) : (
                       <p className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-900">
-                        {profileData.name}
+                        {profile?.name || 'Not set'}
                       </p>
                     )}
                   </div>
@@ -263,7 +269,7 @@ export default function SettingsPage() {
                     </label>
                     <p className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500 flex items-center gap-2">
                       <Shield className="w-4 h-4 text-slate-400" />
-                      {profileData.role}
+                      Super Administrator
                       <span className="text-xs text-slate-400">(Cannot be changed)</span>
                     </p>
                   </div>
@@ -286,7 +292,7 @@ export default function SettingsPage() {
                       Current Email
                     </label>
                     <p className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500">
-                      {profileData.email}
+                      {profile?.email || 'Not set'}
                     </p>
                   </div>
 
@@ -470,9 +476,6 @@ export default function SettingsPage() {
                 </form>
               </div>
             </div>
-          </div>
-        </main>
-      </div>
     </div>
   )
 }

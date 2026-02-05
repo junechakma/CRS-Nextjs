@@ -582,7 +582,7 @@ export default function Home() {
             </Link>
 
             {/* Analytics Demo Card */}
-            <Link href="/student-reviews" className="group block">
+            <Link href="/session-analytics-demo" className="group block">
               <div className="card-3d relative h-[450px] cursor-pointer reveal" style={{ transitionDelay: '100ms' }}>
                 <div className="absolute inset-0 rounded-3xl bg-white border border-slate-200 p-8 transition-all duration-500 group-hover:border-fuchsia-300 group-hover:shadow-2xl group-hover:shadow-fuchsia-100">
                   <div className="h-full flex flex-col">

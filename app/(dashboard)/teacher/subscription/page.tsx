@@ -488,31 +488,6 @@ export default function SubscriptionPage() {
                 ))}
               </div>
             </div>
-
-            {/* CTA Section */}
-            <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-3xl p-8 sm:p-12 text-center">
-              <div className="max-w-2xl mx-auto">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Sparkles className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-                  Ready to Transform Your Teaching?
-                </h2>
-                <p className="text-indigo-100 mb-8">
-                  Join thousands of educators who are already using our platform to enhance student engagement and track learning outcomes effectively.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Button className="bg-white text-indigo-600 hover:bg-indigo-50 gap-2 px-8">
-                    <Crown className="w-4 h-4" />
-                    Start Free Trial
-                  </Button>
-                  <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    Contact Sales
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
         </main>
       </div>

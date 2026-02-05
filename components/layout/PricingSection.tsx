@@ -136,8 +136,8 @@ export default function PricingSection() {
                             <div
                                 key={plan.id}
                                 className={`pricing-card relative overflow-hidden rounded-3xl bg-white border transition-all duration-500 reveal ${plan.popular
-                                        ? 'border-[#468cfe] shadow-2xl shadow-blue-100 scale-105 md:scale-110'
-                                        : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-100/50'
+                                    ? 'border-[#468cfe] shadow-2xl shadow-blue-100 scale-105 md:scale-110'
+                                    : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-100/50'
                                     }`}
                                 style={{ transitionDelay: `${index * 100}ms` }}
                             >
@@ -185,8 +185,8 @@ export default function PricingSection() {
                                         <button
                                             disabled={plan.disabled}
                                             className={`w-full py-3 px-6 rounded-xl font-semibold transition-all mb-8 ${plan.disabled
-                                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                                    : 'bg-[#468cfe] hover:bg-[#3a7be0] text-white shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-105'
+                                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                : 'bg-[#468cfe] hover:bg-[#3a7be0] text-white shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-105'
                                                 }`}
                                         >
                                             {plan.cta}
@@ -195,8 +195,8 @@ export default function PricingSection() {
                                         <button
                                             disabled={plan.disabled}
                                             className={`w-full py-3 px-6 rounded-xl font-semibold transition-all mb-8 ${plan.disabled
-                                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                                                    : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
+                                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                                                : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
                                                 }`}
                                         >
                                             {plan.cta}
@@ -213,8 +213,8 @@ export default function PricingSection() {
                                             >
                                                 {feature.included ? (
                                                     <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${feature.highlight
-                                                            ? 'bg-[#468cfe]'
-                                                            : 'bg-green-100'
+                                                        ? 'bg-[#468cfe]'
+                                                        : 'bg-green-100'
                                                         }`}>
                                                         <Check className={`w-3 h-3 ${feature.highlight ? 'text-white' : 'text-green-600'
                                                             }`} />
@@ -225,10 +225,10 @@ export default function PricingSection() {
                                                     </div>
                                                 )}
                                                 <span className={`text-sm ${feature.included
-                                                        ? feature.highlight
-                                                            ? 'text-slate-900 font-semibold'
-                                                            : 'text-slate-700'
-                                                        : 'text-slate-500 line-through'
+                                                    ? feature.highlight
+                                                        ? 'text-slate-900 font-semibold'
+                                                        : 'text-slate-700'
+                                                    : 'text-slate-500 line-through'
                                                     }`}>
                                                     {feature.text}
                                                 </span>
@@ -237,10 +237,6 @@ export default function PricingSection() {
                                     </div>
                                 </div>
 
-                                {/* Bottom Gradient Accent */}
-                                {plan.popular && (
-                                    <div className="h-1 bg-gradient-to-r from-[#468cfe] to-[#3b82f6]"></div>
-                                )}
                             </div>
                         )
                     })}
