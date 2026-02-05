@@ -589,6 +589,200 @@ export interface TeacherAnalyticsData {
 /**
  * Get comprehensive analytics data for teacher dashboard
  */
+// ============================================================================
+// SUPER ADMIN ANALYTICS QUERIES
+// ============================================================================
+
+export interface SuperAdminAnalyticsData {
+  systemStats: {
+    totalTeachers: number
+    activeTeachers: number
+    premiumUsers: number
+    customUsers: number
+    newTeachersWeek: number
+    totalSessions: number
+    activeSessions: number
+    completedSessions: number
+    totalResponses: number
+    platformAvgRating: number
+    totalCourses: number
+    estimatedMrr: number
+  }
+  planDistribution: Array<{
+    plan: string
+    count: number
+    percentage: number
+    color: string
+  }>
+  monthlyTrends: Array<{
+    month: string
+    responses: number
+    sessions: number
+    activeTeachers: number
+  }>
+  topTeachers: Array<{
+    id: string
+    name: string
+    email: string
+    institution: string | null
+    plan: string
+    totalSessions: number
+    totalResponses: number
+    avgRating: number
+  }>
+  recentActivity: Array<{
+    id: string
+    action: string
+    userName: string
+    userPlan: string
+    time: string
+    metadata: Record<string, unknown> | null
+  }>
+  platformSentiment: {
+    positive: number
+    neutral: number
+    negative: number
+  }
+}
+
+/**
+ * Get comprehensive analytics data for super admin
+ */
+export async function getSuperAdminAnalytics(): Promise<SuperAdminAnalyticsData> {
+  const supabase = await createClient()
+
+  // Get system stats from view
+  const { data: statsData } = await supabase
+    .from('super_admin_dashboard_stats')
+    .select('*')
+    .single()
+
+  // Get plan distribution from view
+  const { data: planData } = await supabase
+    .from('plan_distribution')
+    .select('*')
+
+  // Get monthly trends from view
+  const { data: trendsData } = await supabase
+    .from('monthly_response_trends')
+    .select('*')
+    .order('month', { ascending: true })
+    .limit(6)
+
+  // Get top performing teachers from view
+  const { data: teachersData } = await supabase
+    .from('top_performing_teachers')
+    .select('*')
+    .limit(5)
+
+  // Get recent activity from view
+  const { data: activityData } = await supabase
+    .from('recent_activity')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(6)
+
+  // Get platform sentiment from analytics reports
+  const { data: sentimentData } = await supabase
+    .from('analytics_reports')
+    .select('sentiment_breakdown')
+    .not('sentiment_breakdown', 'is', null)
+    .order('generated_at', { ascending: false })
+    .limit(100)
+
+  // Calculate aggregated sentiment
+  let platformSentiment = { positive: 76, neutral: 17, negative: 7 }
+  if (sentimentData && sentimentData.length > 0) {
+    let totalPositive = 0, totalNeutral = 0, totalNegative = 0, count = 0
+    sentimentData.forEach(report => {
+      if (report.sentiment_breakdown) {
+        const sb = report.sentiment_breakdown as { positive?: number; neutral?: number; negative?: number }
+        totalPositive += sb.positive || 0
+        totalNeutral += sb.neutral || 0
+        totalNegative += sb.negative || 0
+        count++
+      }
+    })
+    if (count > 0) {
+      platformSentiment = {
+        positive: Math.round(totalPositive / count),
+        neutral: Math.round(totalNeutral / count),
+        negative: Math.round(totalNegative / count),
+      }
+    }
+  }
+
+  // Map plan to color
+  const planColors: Record<string, string> = {
+    free: 'bg-slate-400',
+    premium: 'bg-violet-500',
+    custom: 'bg-amber-500',
+  }
+
+  // Format time ago
+  const getTimeAgo = (dateStr: string) => {
+    const now = new Date()
+    const date = new Date(dateStr)
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} mins ago`
+    if (diffHours < 24) return `${diffHours} hours ago`
+    return `${diffDays} days ago`
+  }
+
+  return {
+    systemStats: {
+      totalTeachers: statsData?.total_teachers || 0,
+      activeTeachers: statsData?.active_teachers || 0,
+      premiumUsers: statsData?.premium_users || 0,
+      customUsers: statsData?.custom_users || 0,
+      newTeachersWeek: statsData?.new_teachers_week || 0,
+      totalSessions: statsData?.total_sessions || 0,
+      activeSessions: statsData?.active_sessions || 0,
+      completedSessions: statsData?.completed_sessions || 0,
+      totalResponses: statsData?.total_responses || 0,
+      platformAvgRating: parseFloat(statsData?.platform_avg_rating) || 0,
+      totalCourses: statsData?.total_courses || 0,
+      estimatedMrr: parseFloat(statsData?.estimated_mrr) || 0,
+    },
+    planDistribution: (planData || []).map(p => ({
+      plan: (p.plan || 'free').charAt(0).toUpperCase() + (p.plan || 'free').slice(1),
+      count: p.count || 0,
+      percentage: parseFloat(p.percentage) || 0,
+      color: planColors[p.plan || 'free'] || 'bg-slate-400',
+    })),
+    monthlyTrends: (trendsData || []).map(t => ({
+      month: new Date(t.month).toLocaleDateString('en-US', { month: 'short' }),
+      responses: t.response_count || 0,
+      sessions: t.session_count || 0,
+      activeTeachers: t.active_teachers || 0,
+    })),
+    topTeachers: (teachersData || []).map(t => ({
+      id: t.id,
+      name: t.name || 'Unknown',
+      email: t.email || '',
+      institution: t.institution,
+      plan: t.plan || 'free',
+      totalSessions: t.total_sessions || 0,
+      totalResponses: t.total_responses || 0,
+      avgRating: parseFloat(t.avg_rating) || 0,
+    })),
+    recentActivity: (activityData || []).map(a => ({
+      id: a.id,
+      action: a.action,
+      userName: a.user_name || 'Unknown User',
+      userPlan: a.user_plan || 'free',
+      time: getTimeAgo(a.created_at),
+      metadata: a.metadata,
+    })),
+    platformSentiment,
+  }
+}
+
 export async function getTeacherAnalytics(userId: string): Promise<TeacherAnalyticsData> {
   const supabase = await createClient()
 

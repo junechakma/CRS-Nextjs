@@ -424,6 +424,170 @@ export async function toggleTemplateStatus(templateId: string, userId: string) {
 }
 
 // ============================================================================
+// BASE TEMPLATE ACTIONS (Super Admin)
+// ============================================================================
+
+export async function updateBaseTemplate(data: {
+  name?: string
+  description?: string
+  status?: 'active' | 'inactive'
+  questions?: {
+    text: string
+    type: 'rating' | 'text' | 'multiple' | 'boolean' | 'numeric'
+    required: boolean
+    scale?: number
+    min_value?: number
+    max_value?: number
+    options?: string[]
+    order_index: number
+  }[]
+}) {
+  const supabase = await createClient()
+
+  // Get current user and verify super admin
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'super_admin') {
+    return { success: false, error: 'Only super admins can modify the base template' }
+  }
+
+  // Get base template
+  const { data: baseTemplate } = await supabase
+    .from('question_templates')
+    .select('id')
+    .eq('is_base', true)
+    .single()
+
+  if (!baseTemplate) {
+    return { success: false, error: 'Base template not found' }
+  }
+
+  // Update template
+  const { error: updateError } = await supabase
+    .from('question_templates')
+    .update({
+      name: data.name,
+      description: data.description,
+      status: data.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', baseTemplate.id)
+
+  if (updateError) {
+    console.error('Error updating base template:', updateError)
+    return { success: false, error: updateError.message }
+  }
+
+  // Update questions if provided
+  if (data.questions) {
+    // Delete existing questions
+    await supabase
+      .from('template_questions')
+      .delete()
+      .eq('template_id', baseTemplate.id)
+
+    // Insert new questions
+    const questionsToInsert = data.questions.map((q, index) => ({
+      template_id: baseTemplate.id,
+      text: q.text,
+      type: q.type,
+      required: q.required,
+      scale: q.scale || 5,
+      min_value: q.min_value || 1,
+      max_value: q.max_value || 10,
+      options: q.options || null,
+      order_index: q.order_index ?? index,
+    }))
+
+    const { error: questionsError } = await supabase
+      .from('template_questions')
+      .insert(questionsToInsert)
+
+    if (questionsError) {
+      console.error('Error updating questions:', questionsError)
+      return { success: false, error: questionsError.message }
+    }
+  }
+
+  // Log activity
+  await logActivity({
+    action: 'base_template_updated',
+    entity_type: 'question_template',
+    entity_id: baseTemplate.id,
+    metadata: { changes: data },
+  })
+
+  revalidatePath('/super-admin/question-bank')
+  revalidatePath('/teacher/questions')
+
+  return { success: true }
+}
+
+export async function toggleBaseTemplateStatus() {
+  const supabase = await createClient()
+
+  // Get current user and verify super admin
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Unauthorized' }
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'super_admin') {
+    return { success: false, error: 'Only super admins can modify the base template' }
+  }
+
+  // Get base template current status
+  const { data: baseTemplate } = await supabase
+    .from('question_templates')
+    .select('id, status')
+    .eq('is_base', true)
+    .single()
+
+  if (!baseTemplate) {
+    return { success: false, error: 'Base template not found' }
+  }
+
+  const newStatus = baseTemplate.status === 'active' ? 'inactive' : 'active'
+
+  const { error } = await supabase
+    .from('question_templates')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', baseTemplate.id)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  // Log activity
+  await logActivity({
+    action: 'base_template_status_toggled',
+    entity_type: 'question_template',
+    entity_id: baseTemplate.id,
+    metadata: { newStatus },
+  })
+
+  revalidatePath('/super-admin/question-bank')
+  revalidatePath('/teacher/questions')
+
+  return { success: true, newStatus }
+}
+
+// ============================================================================
 // ACTIVITY LOGGING
 // ============================================================================
 
