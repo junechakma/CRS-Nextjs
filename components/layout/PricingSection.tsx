@@ -212,11 +212,11 @@ export default function PricingSection() {
                                                     }`}
                                             >
                                                 {feature.included ? (
-                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${feature.highlight
+                                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${'highlight' in feature && feature.highlight
                                                         ? 'bg-[#468cfe]'
                                                         : 'bg-green-100'
                                                         }`}>
-                                                        <Check className={`w-3 h-3 ${feature.highlight ? 'text-white' : 'text-green-600'
+                                                        <Check className={`w-3 h-3 ${'highlight' in feature && feature.highlight ? 'text-white' : 'text-green-600'
                                                             }`} />
                                                     </div>
                                                 ) : (
@@ -225,7 +225,7 @@ export default function PricingSection() {
                                                     </div>
                                                 )}
                                                 <span className={`text-sm ${feature.included
-                                                    ? feature.highlight
+                                                    ? 'highlight' in feature && feature.highlight
                                                         ? 'text-slate-900 font-semibold'
                                                         : 'text-slate-700'
                                                     : 'text-slate-500 line-through'

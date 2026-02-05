@@ -337,19 +337,19 @@ export default function SubscriptionPage() {
                           {plan.features.map((feature, idx) => (
                             <li key={idx} className="flex items-start gap-3">
                               {feature.included ? (
-                                <CheckCircle2 className={`w-5 h-5 shrink-0 ${feature.highlight ? "text-indigo-600" : "text-emerald-500"
+                                <CheckCircle2 className={`w-5 h-5 shrink-0 ${'highlight' in feature && feature.highlight ? "text-indigo-600" : "text-emerald-500"
                                   }`} />
                               ) : (
                                 <X className="w-5 h-5 text-slate-300 shrink-0" />
                               )}
                               <span className={`text-sm ${feature.included
-                                ? feature.highlight
+                                ? 'highlight' in feature && feature.highlight
                                   ? "text-slate-900 font-medium"
                                   : "text-slate-700"
                                 : "text-slate-400"
                                 }`}>
                                 {feature.text}
-                                {feature.highlight && feature.text.includes("Unlimited") && (
+                                {'highlight' in feature && feature.highlight && feature.text.includes("Unlimited") && (
                                   <Infinity className="w-4 h-4 inline ml-1 text-indigo-500" />
                                 )}
                               </span>
