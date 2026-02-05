@@ -33,6 +33,7 @@ import {
 } from "lucide-react"
 import { UserWithStats } from "@/lib/supabase/queries"
 import { updateUser, deleteUser, createUserByAdmin } from "@/lib/supabase/actions"
+import { HeaderSection, StatsGridSection, FiltersSection } from "./users-wrapper"
 
 interface UsersPageClientProps {
   initialUsers: UserWithStats[]
@@ -43,6 +44,8 @@ interface UsersPageClientProps {
   initialSearch: string
   initialStatus: string
   initialPlan: string
+  showHeader?: boolean
+  showContent?: boolean
 }
 
 const avatarGradients = [
@@ -61,6 +64,8 @@ export default function UsersPageClient({
   initialSearch,
   initialStatus,
   initialPlan,
+  showHeader = true,
+  showContent = true,
 }: UsersPageClientProps) {
   const [searchQuery, setSearchQuery] = useState(initialSearch)
   const [statusFilter, setStatusFilter] = useState(initialStatus)
@@ -85,6 +90,34 @@ export default function UsersPageClient({
   const [newUserInstitution, setNewUserInstitution] = useState("")
   const [newUserDepartment, setNewUserDepartment] = useState("")
   const [newUserPlan, setNewUserPlan] = useState<"free" | "premium" | "custom">("free")
+
+  // If only showing header, render just that
+  if (showHeader && !showContent) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <HeaderSection isPending={isPending} onAddUser={() => setIsAddModalOpen(true)} />
+
+        {/* Add User Modal */}
+        {isAddModalOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => {
+                setIsAddModalOpen(false)
+                resetAddForm()
+              }}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Modal content will be rendered here - keeping the same modal from below */}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // If not showing header, skip it in the main render
+  const shouldRenderHeader = showHeader
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -257,309 +290,190 @@ export default function UsersPageClient({
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                    Users Management
-                  </h1>
-                  {isPending && (
-                    <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-                  )}
-                </div>
-                <p className="text-slate-500">
-                  Manage users, subscriptions and account status
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="w-4 h-4" />
-                  Export
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Add User
-                </Button>
-              </div>
-            </div>
+        {/* Static Header - Conditionally rendered */}
+        {shouldRenderHeader && (
+          <HeaderSection isPending={isPending} onAddUser={() => setIsAddModalOpen(true)} />
+        )}
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs text-slate-500">Total</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-900">{totalCount}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-xs text-slate-500">Active</span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-600">{stats.active}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <XCircle className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs text-slate-500">Inactive</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-600">{stats.inactive}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs text-slate-500">Free</span>
-                </div>
-                <p className="text-2xl font-bold text-slate-600">{stats.free}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Crown className="w-4 h-4 text-indigo-500" />
-                  <span className="text-xs text-slate-500">Premium</span>
-                </div>
-                <p className="text-2xl font-bold text-indigo-600">{stats.premium}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-4 h-4 text-violet-500" />
-                  <span className="text-xs text-slate-500">Custom</span>
-                </div>
-                <p className="text-2xl font-bold text-violet-600">{stats.custom}</p>
-              </div>
-            </div>
+        {/* Static Stats Grid - Shows immediately */}
+        <StatsGridSection totalCount={totalCount} stats={stats} />
 
-            {/* Filters */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {/* Status Filter */}
-                  <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
-                    {["all", "active", "inactive"].map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => setStatusFilter(status)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                          statusFilter === status
-                            ? "bg-white text-slate-900 shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+        {/* Static Filters - Shows immediately */}
+        <FiltersSection
+          searchQuery={searchQuery}
+          statusFilter={statusFilter}
+          planFilter={planFilter}
+          onSearchChange={setSearchQuery}
+          onStatusChange={setStatusFilter}
+          onPlanChange={setPlanFilter}
+        />
 
-                  {/* Plan Filter */}
-                  <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
-                    {["all", "free", "premium", "custom"].map((plan) => (
-                      <button
-                        key={plan}
-                        onClick={() => setPlanFilter(plan)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                          planFilter === plan
-                            ? "bg-white text-slate-900 shadow-sm"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        {plan === "premium" && <Crown className="w-3 h-3" />}
-                        {plan === "custom" && <Building2 className="w-3 h-3" />}
-                        {plan === "free" && <Zap className="w-3 h-3" />}
-                        {plan.charAt(0).toUpperCase() + plan.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+        {/* Dynamic Users Table */}
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="text-left p-4 text-sm font-semibold text-slate-600">User</th>
+                  <th className="text-left p-4 text-sm font-semibold text-slate-600 hidden md:table-cell">Institution</th>
+                  <th className="text-center p-4 text-sm font-semibold text-slate-600 hidden lg:table-cell">Courses</th>
+                  <th className="text-center p-4 text-sm font-semibold text-slate-600">Plan</th>
+                  <th className="text-center p-4 text-sm font-semibold text-slate-600 hidden sm:table-cell">Status</th>
+                  <th className="text-right p-4 text-sm font-semibold text-slate-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {initialUsers.length > 0 ? (
+                  initialUsers.map((user, idx) => (
+                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 border-2 border-white shadow-md">
+                            <AvatarFallback
+                              className={`text-white font-semibold text-sm bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]}`}
+                            >
+                              {user.name?.split(" ").map((n) => n[0]).join("").substring(0, 2) || '??'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-slate-900 text-sm">{user.name || 'Unnamed'}</p>
+                            <p className="text-xs text-slate-500 flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 hidden md:table-cell">
+                        <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                          <Building className="w-3.5 h-3.5 text-slate-400" />
+                          {user.institution || 'Not specified'}
+                        </div>
+                        <p className="text-xs text-slate-400 ml-5">{user.department || ''}</p>
+                      </td>
+                      <td className="p-4 text-center hidden lg:table-cell">
+                        <Badge variant="secondary" className="font-medium">
+                          {user.courses_count}
+                        </Badge>
+                      </td>
+                      <td className="p-4 text-center">
+                        {getPlanBadge(user.plan)}
+                      </td>
+                      <td className="p-4 text-center hidden sm:table-cell">
+                        {getStatusBadge(user.status)}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="relative" ref={openDropdown === user.id ? dropdownRef : null}>
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
+                            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4 text-slate-400" />
+                          </button>
 
-                {/* Search */}
-                <div className="relative w-full lg:w-auto">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search users..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full lg:w-64 pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Users Table */}
-            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50">
-                      <th className="text-left p-4 text-sm font-semibold text-slate-600">User</th>
-                      <th className="text-left p-4 text-sm font-semibold text-slate-600 hidden md:table-cell">Institution</th>
-                      <th className="text-center p-4 text-sm font-semibold text-slate-600 hidden lg:table-cell">Courses</th>
-                      <th className="text-center p-4 text-sm font-semibold text-slate-600">Plan</th>
-                      <th className="text-center p-4 text-sm font-semibold text-slate-600 hidden sm:table-cell">Status</th>
-                      <th className="text-right p-4 text-sm font-semibold text-slate-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {initialUsers.length > 0 ? (
-                      initialUsers.map((user, idx) => (
-                        <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10 border-2 border-white shadow-md">
-                                <AvatarFallback
-                                  className={`text-white font-semibold text-sm bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]}`}
-                                >
-                                  {user.name?.split(" ").map((n) => n[0]).join("").substring(0, 2) || '??'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium text-slate-900 text-sm">{user.name || 'Unnamed'}</p>
-                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                  <Mail className="w-3 h-3" />
-                                  {user.email}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 hidden md:table-cell">
-                            <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                              <Building className="w-3.5 h-3.5 text-slate-400" />
-                              {user.institution || 'Not specified'}
-                            </div>
-                            <p className="text-xs text-slate-400 ml-5">{user.department || ''}</p>
-                          </td>
-                          <td className="p-4 text-center hidden lg:table-cell">
-                            <Badge variant="secondary" className="font-medium">
-                              {user.courses_count}
-                            </Badge>
-                          </td>
-                          <td className="p-4 text-center">
-                            {getPlanBadge(user.plan)}
-                          </td>
-                          <td className="p-4 text-center hidden sm:table-cell">
-                            {getStatusBadge(user.status)}
-                          </td>
-                          <td className="p-4 text-right">
-                            <div className="relative" ref={openDropdown === user.id ? dropdownRef : null}>
+                          {openDropdown === user.id && (
+                            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                               <button
-                                onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
-                                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                                onClick={() => handleView(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
                               >
-                                <MoreVertical className="w-4 h-4 text-slate-400" />
+                                <Eye className="w-4 h-4 text-slate-400" />
+                                View Details
                               </button>
-
-                              {openDropdown === user.id && (
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                                  <button
-                                    onClick={() => handleView(user)}
-                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                                  >
-                                    <Eye className="w-4 h-4 text-slate-400" />
-                                    View Details
-                                  </button>
-                                  <button
-                                    onClick={() => handleEdit(user)}
-                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                                  >
-                                    <Edit className="w-4 h-4 text-slate-400" />
-                                    Edit User
-                                  </button>
-                                  <div className="border-t border-slate-100 my-1" />
-                                  <button
-                                    onClick={() => handleDelete(user.id)}
-                                    className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete User
-                                  </button>
-                                </div>
-                              )}
+                              <button
+                                onClick={() => handleEdit(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <Edit className="w-4 h-4 text-slate-400" />
+                                Edit User
+                              </button>
+                              <div className="border-t border-slate-100 my-1" />
+                              <button
+                                onClick={() => handleDelete(user.id)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete User
+                              </button>
                             </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="p-12 text-center">
-                          <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                          <p className="text-slate-500">No users found</p>
-                          <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-12 text-center">
+                      <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500">No users found</p>
+                      <p className="text-sm text-slate-400">Try adjusting your search or filters</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-slate-100">
-                <p className="text-sm text-slate-500">
-                  Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{" "}
-                  <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of{" "}
-                  <span className="font-medium">{totalCount}</span>
-                </p>
-                <div className="flex items-center gap-2">
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-slate-100">
+            <p className="text-sm text-slate-500">
+              Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+              <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of{" "}
+              <span className="font-medium">{totalCount}</span>
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={currentPage === 1 || isPending}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              {/* Page Numbers */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number
+                if (totalPages <= 5) {
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i
+                } else {
+                  pageNum = currentPage - 2 + i
+                }
+                return (
                   <Button
-                    variant="outline"
+                    key={pageNum}
                     size="sm"
-                    className="h-8 w-8 p-0"
-                    disabled={currentPage === 1 || isPending}
-                    onClick={() => handlePageChange(currentPage - 1)}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    className={`h-8 px-3 ${currentPage === pageNum
+                      ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+                      : ""
+                      }`}
+                    onClick={() => handlePageChange(pageNum)}
+                    disabled={isPending}
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    {pageNum}
                   </Button>
+                )
+              })}
 
-                  {/* Page Numbers */}
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number
-                    if (totalPages <= 5) {
-                      pageNum = i + 1
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i
-                    } else {
-                      pageNum = currentPage - 2 + i
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        size="sm"
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        className={`h-8 px-3 ${
-                          currentPage === pageNum
-                            ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
-                            : ""
-                        }`}
-                        onClick={() => handlePageChange(pageNum)}
-                        disabled={isPending}
-                      >
-                        {pageNum}
-                      </Button>
-                    )
-                  })}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    disabled={currentPage === totalPages || isPending}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={currentPage === totalPages || isPending}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
+        </div>
+      </div>
 
       {/* Add User Modal */}
       {isAddModalOpen && (
@@ -661,15 +575,14 @@ export default function UsersPageClient({
                       <button
                         key={plan}
                         onClick={() => setNewUserPlan(plan)}
-                        className={`p-3 rounded-xl border-2 transition-all text-center ${
-                          newUserPlan === plan
-                            ? plan === 'free'
-                              ? 'border-slate-400 bg-slate-50'
-                              : plan === 'premium'
+                        className={`p-3 rounded-xl border-2 transition-all text-center ${newUserPlan === plan
+                          ? plan === 'free'
+                            ? 'border-slate-400 bg-slate-50'
+                            : plan === 'premium'
                               ? 'border-indigo-400 bg-indigo-50'
                               : 'border-violet-400 bg-violet-50'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
+                          : 'border-slate-200 hover:border-slate-300'
+                          }`}
                       >
                         {plan === 'free' && <Zap className={`w-5 h-5 mx-auto mb-1 ${newUserPlan === plan ? 'text-slate-600' : 'text-slate-400'}`} />}
                         {plan === 'premium' && <Crown className={`w-5 h-5 mx-auto mb-1 ${newUserPlan === plan ? 'text-indigo-600' : 'text-slate-400'}`} />}
@@ -762,15 +675,14 @@ export default function UsersPageClient({
                       <button
                         key={plan}
                         onClick={() => setFormPlan(plan)}
-                        className={`p-3 rounded-xl border-2 transition-all text-center ${
-                          formPlan === plan
-                            ? plan === 'free'
-                              ? 'border-slate-400 bg-slate-50'
-                              : plan === 'premium'
+                        className={`p-3 rounded-xl border-2 transition-all text-center ${formPlan === plan
+                          ? plan === 'free'
+                            ? 'border-slate-400 bg-slate-50'
+                            : plan === 'premium'
                               ? 'border-indigo-400 bg-indigo-50'
                               : 'border-violet-400 bg-violet-50'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
+                          : 'border-slate-200 hover:border-slate-300'
+                          }`}
                       >
                         {plan === 'free' && <Zap className={`w-5 h-5 mx-auto mb-1 ${formPlan === plan ? 'text-slate-600' : 'text-slate-400'}`} />}
                         {plan === 'premium' && <Crown className={`w-5 h-5 mx-auto mb-1 ${formPlan === plan ? 'text-indigo-600' : 'text-slate-400'}`} />}
@@ -790,11 +702,10 @@ export default function UsersPageClient({
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setFormStatus("active")}
-                      className={`p-3 rounded-xl border-2 transition-all text-center ${
-                        formStatus === "active"
-                          ? "border-emerald-400 bg-emerald-50"
-                          : "border-slate-200 hover:border-emerald-200"
-                      }`}
+                      className={`p-3 rounded-xl border-2 transition-all text-center ${formStatus === "active"
+                        ? "border-emerald-400 bg-emerald-50"
+                        : "border-slate-200 hover:border-emerald-200"
+                        }`}
                     >
                       <CheckCircle2 className={`w-5 h-5 mx-auto mb-1 ${formStatus === "active" ? "text-emerald-600" : "text-slate-400"}`} />
                       <span className={`text-sm font-medium ${formStatus === "active" ? "text-emerald-700" : "text-slate-600"}`}>
@@ -803,11 +714,10 @@ export default function UsersPageClient({
                     </button>
                     <button
                       onClick={() => setFormStatus("inactive")}
-                      className={`p-3 rounded-xl border-2 transition-all text-center ${
-                        formStatus === "inactive"
-                          ? "border-slate-400 bg-slate-100"
-                          : "border-slate-200 hover:border-slate-300"
-                      }`}
+                      className={`p-3 rounded-xl border-2 transition-all text-center ${formStatus === "inactive"
+                        ? "border-slate-400 bg-slate-100"
+                        : "border-slate-200 hover:border-slate-300"
+                        }`}
                     >
                       <XCircle className={`w-5 h-5 mx-auto mb-1 ${formStatus === "inactive" ? "text-slate-600" : "text-slate-400"}`} />
                       <span className={`text-sm font-medium ${formStatus === "inactive" ? "text-slate-700" : "text-slate-600"}`}>
