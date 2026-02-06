@@ -947,7 +947,129 @@ export interface SessionStats {
 }
 
 /**
- * Get all sessions for a teacher
+ * Get paginated sessions for a teacher (OPTIMIZED with view)
+ */
+export async function getTeacherSessionsPaginated({
+  userId,
+  page = 1,
+  pageSize = 12,
+  search = '',
+  status = 'all',
+  courseId = '',
+}: {
+  userId: string
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  courseId?: string
+}): Promise<PaginatedResult<SessionData>> {
+  const supabase = await createClient()
+
+  const offset = (page - 1) * pageSize
+
+  // Build query using optimized view
+  let query = supabase
+    .from('session_stats_paginated')
+    .select('*', { count: 'exact' })
+    .eq('user_id', userId)
+
+  // Apply status filter
+  if (status !== 'all') {
+    query = query.eq('status', status)
+  }
+
+  // Apply course filter
+  if (courseId && courseId !== 'all') {
+    query = query.eq('course_id', courseId)
+  }
+
+  // Apply search filter
+  if (search) {
+    query = query.ilike('name', `%${search}%`)
+  }
+
+  // Apply sorting and pagination
+  query = query
+    .order('start_time', { ascending: false, nullsFirst: false })
+    .range(offset, offset + pageSize - 1)
+
+  const { data, error, count } = await query
+
+  if (error) {
+    console.error('Error fetching sessions:', error)
+    return { data: [], count: 0, page, pageSize, totalPages: 0 }
+  }
+
+  const now = new Date()
+
+  // Transform data
+  const sessions: SessionData[] = (data || []).map(session => {
+    const startTime = session.start_time ? new Date(session.start_time) : null
+    const endTime = session.end_time ? new Date(session.end_time) : null
+
+    // Calculate duration/status text
+    let duration = ''
+    if (session.status === 'live') {
+      const elapsed = Math.floor((now.getTime() - (startTime?.getTime() || 0)) / 60000)
+      duration = `${elapsed} min active`
+    } else if (session.status === 'scheduled' && startTime) {
+      const timeUntil = Math.floor((startTime.getTime() - now.getTime()) / 60000)
+      if (timeUntil < 60) {
+        duration = `Starts in ${timeUntil}m`
+      } else if (timeUntil < 1440) {
+        duration = `Starts in ${Math.floor(timeUntil / 60)}h`
+      } else {
+        duration = 'Scheduled'
+      }
+    } else {
+      duration = 'Completed'
+    }
+
+    // Format date
+    let date = ''
+    if (startTime) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const sessionDate = new Date(startTime)
+      sessionDate.setHours(0, 0, 0, 0)
+      const diffDays = Math.floor((sessionDate.getTime() - today.getTime()) / 86400000)
+
+      if (diffDays === 0) date = 'Today'
+      else if (diffDays === 1) date = 'Tomorrow'
+      else if (diffDays === -1) date = 'Yesterday'
+      else date = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+
+    return {
+      id: session.id,
+      name: session.name,
+      course: session.course_name || 'Unknown Course',
+      courseCode: session.course_code || '',
+      courseId: session.course_id,
+      accessCode: session.access_code,
+      status: session.status as 'live' | 'scheduled' | 'completed',
+      responses: session.response_count || 0,
+      total: session.total_expected_students || 0,
+      startTime: startTime ? startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+      endTime: endTime ? endTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '',
+      date,
+      duration,
+      templateId: session.template_id || '',
+    }
+  })
+
+  return {
+    data: sessions,
+    count: count || 0,
+    page,
+    pageSize,
+    totalPages: Math.ceil((count || 0) / pageSize),
+  }
+}
+
+/**
+ * Get all sessions for a teacher (DEPRECATED - use getTeacherSessionsPaginated)
  */
 export async function getTeacherSessions(userId: string): Promise<SessionData[]> {
   const supabase = await createClient()

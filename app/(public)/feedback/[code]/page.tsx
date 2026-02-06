@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { getSessionByAccessCode, submitSessionResponse } from "@/lib/actions/feedback"
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,113 +21,8 @@ import {
   Loader2,
 } from "lucide-react"
 
-// Mock session data - In production, this would be fetched from API
-const getSessionByCode = (code: string) => {
-  // Simulate different sessions
-  const sessions: Record<string, {
-    id: number
-    name: string
-    course: string
-    courseCode: string
-    teacherName: string
-    status: "active" | "expired" | "scheduled"
-    expiresAt: string
-    questions: Question[]
-  }> = {
-    "CS401": {
-      id: 1,
-      name: "Mid-Semester Feedback",
-      course: "Introduction to Machine Learning",
-      courseCode: "CS401",
-      teacherName: "Dr. Sarah Johnson",
-      status: "active",
-      expiresAt: "2025-01-31T23:59:59",
-      questions: [
-        {
-          id: 1,
-          text: "How would you rate the clarity of explanations in today's lecture?",
-          type: "rating",
-          scale: 5,
-          required: true,
-        },
-        {
-          id: 2,
-          text: "The pace of the course is appropriate for my learning needs.",
-          type: "rating",
-          scale: 5,
-          required: true,
-        },
-        {
-          id: 3,
-          text: "Do you feel comfortable asking questions during class?",
-          type: "boolean",
-          required: true,
-        },
-        {
-          id: 4,
-          text: "Which teaching method do you find most effective?",
-          type: "multiple",
-          required: false,
-          options: [
-            "Lecture with slides",
-            "Live coding demonstrations",
-            "Group discussions",
-            "Hands-on exercises",
-          ],
-        },
-        {
-          id: 5,
-          text: "What suggestions do you have for improving the course?",
-          type: "text",
-          required: false,
-        },
-        {
-          id: 6,
-          text: "On a scale of 1-10, how likely are you to recommend this course?",
-          type: "numeric",
-          required: true,
-          min: 1,
-          max: 10,
-        },
-      ],
-    },
-    "DEMO": {
-      id: 2,
-      name: "Demo Feedback Session",
-      course: "Demo Course",
-      courseCode: "DEMO",
-      teacherName: "Demo Teacher",
-      status: "active",
-      expiresAt: "2025-12-31T23:59:59",
-      questions: [
-        {
-          id: 1,
-          text: "How would you rate your overall experience?",
-          type: "rating",
-          scale: 5,
-          required: true,
-        },
-        {
-          id: 2,
-          text: "Would you recommend this to others?",
-          type: "boolean",
-          required: true,
-        },
-        {
-          id: 3,
-          text: "Any additional feedback?",
-          type: "text",
-          required: false,
-        },
-      ],
-    },
-  }
-
-  return sessions[code.toUpperCase()] || null
-}
-
 interface Question {
-  id: number
+  id: string
   text: string
   type: "rating" | "boolean" | "multiple" | "text" | "numeric"
   required: boolean
@@ -137,18 +33,17 @@ interface Question {
 }
 
 interface Response {
-  questionId: number
+  questionId: string
   value: number | string | boolean | null
 }
 
 type SessionData = {
-  id: number
+  id: string
   name: string
   course: string
   courseCode: string
   teacherName: string
   status: "active" | "expired" | "scheduled"
-  expiresAt: string
   questions: Question[]
 } | null
 
@@ -165,22 +60,38 @@ export default function SessionResponsePage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
 
   useEffect(() => {
-    // Simulate API fetch
-    const timer = setTimeout(() => {
-      const sessionData = getSessionByCode(code)
-      setSession(sessionData)
-      if (sessionData) {
+    const fetchSession = async () => {
+      setLoading(true)
+      const result = await getSessionByAccessCode(code)
+
+      if (result.success && result.data) {
+        setSession(result.data)
         setResponses(
-          sessionData.questions.map((q) => ({
+          result.data.questions.map((q) => ({
             questionId: q.id,
             value: null,
           }))
         )
+      } else {
+        // Handle different error types
+        if (result.error === "expired") {
+          setSession({
+            id: "",
+            name: "",
+            course: "",
+            courseCode: "",
+            teacherName: "",
+            status: "expired",
+            questions: [],
+          })
+        } else {
+          setSession(null)
+        }
       }
       setLoading(false)
-    }, 500)
+    }
 
-    return () => clearTimeout(timer)
+    fetchSession()
   }, [code])
 
   const currentQ = session?.questions[currentQuestion]
@@ -213,11 +124,22 @@ export default function SessionResponsePage() {
   }
 
   const handleSubmit = async () => {
+    if (!session) return
+
     setIsSubmitting(true)
-    // Simulate API submission
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const result = await submitSessionResponse({
+      sessionId: session.id,
+      responses,
+    })
+
     setIsSubmitting(false)
-    setIsSubmitted(true)
+
+    if (result.success) {
+      setIsSubmitted(true)
+    } else {
+      // Show error (you can add toast notification here)
+      alert(result.error || "Failed to submit response. Please try again.")
+    }
   }
 
   const isLastQuestion = session && currentQuestion === session.questions.length - 1

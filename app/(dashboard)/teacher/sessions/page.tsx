@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { getTeacherSessions, getTeacherSessionStats, getTeacherCourses } from "@/lib/supabase/queries/teacher"
+import { getTeacherSessionsPaginated, getTeacherSessionStats, getTeacherCourses } from "@/lib/supabase/queries/teacher"
 import { getQuestionTemplates } from "@/lib/supabase/queries"
 import SessionsClient from "./sessions-client"
 import { Calendar, Play, MessageSquare, TrendingUp } from "lucide-react"
@@ -95,8 +95,12 @@ async function SessionsContent() {
     redirect('/super-admin')
   }
 
-  const [sessions, stats, coursesData, templatesData] = await Promise.all([
-    getTeacherSessions(user.id),
+  const [sessionsResult, stats, coursesData, templatesData] = await Promise.all([
+    getTeacherSessionsPaginated({
+      userId: user.id,
+      page: 1,
+      pageSize: 12,
+    }),
     getTeacherSessionStats(user.id),
     getTeacherCourses(user.id),
     getQuestionTemplates({
@@ -106,6 +110,8 @@ async function SessionsContent() {
       includeBase: true,
     })
   ])
+
+  const sessions = sessionsResult?.data || []
 
   // Format courses for the modal
   const courses = coursesData.map(c => ({

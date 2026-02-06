@@ -6,7 +6,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CreateSessionModal } from "@/components/teacher/create-session-modal"
 import { EditSessionModal } from "@/components/teacher/edit-session-modal"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SessionData, SessionStats } from "@/lib/supabase/queries/teacher"
+import {
+  getSessionsPaginatedAction,
+  createSessionAction,
+  updateSessionAction,
+  deleteSessionAction,
+  CreateSessionInput,
+  UpdateSessionInput,
+} from "@/lib/actions/sessions"
+import { toast } from "sonner"
 import {
   Calendar,
   Plus,
@@ -28,6 +38,7 @@ import {
   Power,
   X,
   Download,
+  Loader2,
 } from "lucide-react"
 
 interface SessionsClientProps {
@@ -40,13 +51,23 @@ interface SessionsClientProps {
 export default function SessionsClient({ sessions: initialSessions, stats, courses, templates }: SessionsClientProps) {
   const router = useRouter()
   const [filter, setFilter] = useState("all")
-  const [sessions, setSessions] = useState<SessionData[]>(initialSessions)
+  const [sessions, setSessions] = useState<SessionData[]>(initialSessions || [])
   const [searchQuery, setSearchQuery] = useState("")
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<SessionData | null>(null)
   const [qrSession, setQrSession] = useState<SessionData | null>(null)
+  const [deleteSession, setDeleteSession] = useState<SessionData | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const isMounted = useRef(false)
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalCount, setTotalCount] = useState(initialSessions?.length || 0)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,17 +79,175 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const filteredSessions = sessions.filter((session) => {
-    const matchesFilter = filter === "all" || session.status === filter
-    const matchesSearch = session.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.courseCode.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesFilter && matchesSearch
-  })
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
 
-  const handleDelete = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId))
-    setOpenDropdown(null)
+    searchTimeoutRef.current = setTimeout(() => {
+      setPage(1)
+      fetchSessions(1, searchQuery, filter, true)
+    }, 500)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
+
+  // Fetch sessions from server
+  const fetchSessions = async (
+    pageNum: number,
+    search: string,
+    status: string,
+    reset: boolean = false
+  ) => {
+    setIsLoadingMore(true)
+    try {
+      const result = await getSessionsPaginatedAction({
+        page: pageNum,
+        pageSize: 12,
+        search,
+        status,
+      })
+
+      if (result.success && result.data) {
+        const paginatedData = result.data
+        if (reset) {
+          setSessions(paginatedData.data)
+        } else {
+          setSessions((prev) => [...prev, ...paginatedData.data])
+        }
+        const hasMoreItems = pageNum < paginatedData.totalPages
+        setHasMore(hasMoreItems)
+        setTotalCount(paginatedData.count)
+        setPage(pageNum)
+      } else {
+        toast.error(result.error || "Failed to fetch sessions")
+      }
+    } catch (error) {
+      console.error("Error fetching sessions:", error)
+      toast.error("Failed to fetch sessions")
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
+
+  // Filter change handler
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true
+      return
+    }
+    setPage(1)
+    fetchSessions(1, searchQuery, filter, true)
+  }, [filter])
+
+  const handleCreateSession = async (data: any) => {
+    // Prepare session input based on session type
+    const sessionInput: CreateSessionInput = {
+      courseId: data.courseId,
+      name: data.name,
+      accessCode: data.accessCode,
+      templateId: data.templateId,
+      description: data.description,
+      expectedStudents: data.expectedStudents,
+    }
+
+    // For "Start Now" sessions - auto-calculate times from duration
+    if (data.sessionType === "now") {
+      sessionInput.durationMinutes = data.duration
+      sessionInput.status = "live" // Start immediately as live
+      // startTime and endTime will be auto-calculated in the action
+    }
+    // For "Scheduled" sessions - use provided date/time
+    else {
+      sessionInput.scheduledDate = data.date
+      // Combine date and time into ISO timestamps
+      if (data.date && data.startTime) {
+        const startDateTime = new Date(`${data.date}T${data.startTime}`)
+        sessionInput.startTime = startDateTime.toISOString()
+      }
+      if (data.date && data.endTime) {
+        const endDateTime = new Date(`${data.date}T${data.endTime}`)
+        sessionInput.endTime = endDateTime.toISOString()
+      }
+      sessionInput.status = "scheduled"
+    }
+
+    const result = await createSessionAction(sessionInput)
+
+    if (result.success) {
+      toast.success("Session created successfully")
+      setIsCreateModalOpen(false)
+      setPage(1)
+      await fetchSessions(1, searchQuery, filter, true)
+    } else {
+      toast.error(result.error || "Failed to create session")
+    }
+  }
+
+  const handleEditSession = async (data: any) => {
+    if (!editingSession) return
+
+    // Optimistic update
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === editingSession.id
+          ? { ...s, name: data.name, description: data.description }
+          : s
+      )
+    )
+
+    const updateInput: UpdateSessionInput = {
+      id: editingSession.id,
+      name: data.name,
+      description: data.description,
+      scheduledDate: data.scheduledDate,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      durationMinutes: data.durationMinutes,
+      expectedStudents: data.expectedStudents,
+      status: data.status,
+    }
+
+    const result = await updateSessionAction(updateInput)
+
+    if (result.success) {
+      toast.success("Session updated successfully")
+      setEditingSession(null)
+      await fetchSessions(page, searchQuery, filter, true)
+    } else {
+      toast.error(result.error || "Failed to update session")
+      // Revert optimistic update
+      await fetchSessions(page, searchQuery, filter, true)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteSession) return
+
+    setIsDeleting(true)
+
+    // Optimistic update
+    setSessions((prev) => prev.filter((s) => s.id !== deleteSession.id))
+
+    const result = await deleteSessionAction(deleteSession.id)
+
+    if (result.success) {
+      toast.success("Session deleted successfully")
+      setDeleteSession(null)
+      setIsDeleting(false)
+      // Refresh to adjust pagination
+      await fetchSessions(page, searchQuery, filter, true)
+    } else {
+      toast.error(result.error || "Failed to delete session")
+      setIsDeleting(false)
+      // Revert optimistic update
+      await fetchSessions(page, searchQuery, filter, true)
+    }
   }
 
   const handleEdit = (session: SessionData) => {
@@ -76,18 +255,47 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
     setOpenDropdown(null)
   }
 
-  const handleToggleStatus = (sessionId: string) => {
-    setSessions(prev =>
-      prev.map(s => {
-        if (s.id === sessionId) {
-          if (s.status === "scheduled") return { ...s, status: "live" as const, duration: "Just started" }
-          if (s.status === "live") return { ...s, status: "completed" as const, duration: "Completed" }
-          return s
-        }
-        return s
-      })
+  const handleToggleStatus = async (sessionId: string) => {
+    const session = sessions.find((s) => s.id === sessionId)
+    if (!session) return
+
+    let newStatus: "scheduled" | "live" | "completed"
+
+    if (session.status === "scheduled") {
+      newStatus = "live"
+    } else if (session.status === "live") {
+      newStatus = "completed"
+    } else {
+      return
+    }
+
+    // Optimistic update
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId ? { ...s, status: newStatus } : s
+      )
     )
     setOpenDropdown(null)
+
+    const result = await updateSessionAction({
+      id: sessionId,
+      status: newStatus,
+    })
+
+    if (result.success) {
+      toast.success(`Session ${newStatus === "live" ? "started" : "ended"} successfully`)
+      await fetchSessions(page, searchQuery, filter, true)
+    } else {
+      toast.error(result.error || "Failed to update session status")
+      // Revert optimistic update
+      await fetchSessions(page, searchQuery, filter, true)
+    }
+  }
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchSessions(page + 1, searchQuery, filter, false)
+    }
   }
 
   const copyAccessCode = (code: string) => {
@@ -250,7 +458,14 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
         </div>
 
         <div className="space-y-4">
-          {filteredSessions.map((session) => (
+          {sessions.length === 0 && !isLoadingMore && (
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
+              <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">No sessions found</p>
+            </div>
+          )}
+
+          {sessions.map((session) => (
             <div
               key={session.id}
               className={`bg-white rounded-2xl border transition-all duration-300 hover:shadow-lg group cursor-pointer ${
@@ -374,7 +589,8 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleDelete(session.id)
+                              setDeleteSession(session)
+                              setOpenDropdown(null)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
                           >
@@ -418,6 +634,32 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
               </div>
             </div>
           ))}
+
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <Button
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                variant="outline"
+                className="gap-2 min-w-[200px]"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>Load More Sessions</>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {sessions.length > 0 && !hasMore && (
+            <div className="text-center py-4 text-sm text-slate-500">
+              Showing all {totalCount} session{totalCount !== 1 ? "s" : ""}
+            </div>
+          )}
         </div>
       </div>
 
@@ -426,10 +668,7 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
         onClose={() => setIsCreateModalOpen(false)}
         courses={courses}
         templates={templates}
-        onSubmit={(data) => {
-          console.log("New session:", data)
-          setIsCreateModalOpen(false)
-        }}
+        onSubmit={handleCreateSession}
       />
 
       <EditSessionModal
@@ -438,10 +677,19 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
         session={editingSession}
         courses={courses}
         templates={templates}
-        onSubmit={(data) => {
-          console.log("Edit session:", data)
-          setEditingSession(null)
-        }}
+        onSubmit={handleEditSession}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteSession}
+        onClose={() => setDeleteSession(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Session"
+        message={`Are you sure you want to delete "${deleteSession?.name}"? This action cannot be undone and will permanently remove all session data, responses, and analytics.`}
+        confirmText="Delete Session"
+        cancelText="Cancel"
+        isDestructive={true}
+        isLoading={isDeleting}
       />
 
       {qrSession && (

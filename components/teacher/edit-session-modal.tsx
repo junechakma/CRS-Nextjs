@@ -21,6 +21,7 @@ import {
 interface Session {
   id: number
   name: string
+  description?: string
   course: string
   courseCode: string
   accessCode: string
@@ -47,6 +48,7 @@ interface EditSessionModalProps {
 interface SessionFormData {
   id: number
   name: string
+  description: string
   courseId: string
   templateId: string
   date: string
@@ -106,6 +108,7 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
   const [formData, setFormData] = useState<SessionFormData>({
     id: 0,
     name: "",
+    description: "",
     courseId: "",
     templateId: "",
     date: "",
@@ -126,6 +129,7 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
       setFormData({
         id: session.id,
         name: session.name,
+        description: session.description || "",
         courseId: courseId,
         templateId: session.templateId || templates[0]?.id || "",
         date: convertToDateInput(session.date),
@@ -259,6 +263,27 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
                   {errors.name}
                 </p>
               )}
+            </div>
+
+            {/* Description */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <FileText className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                Description <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description of this feedback session..."
+                  maxLength={500}
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm resize-none"
+                />
+                <div className="absolute bottom-2 right-3 text-xs text-slate-400">
+                  {formData.description.length}/500
+                </div>
+              </div>
             </div>
 
             {/* Course & Template */}
