@@ -423,6 +423,52 @@ export async function toggleTemplateStatus(templateId: string, userId: string) {
   return { success: true, newStatus }
 }
 
+// Fetch templates with pagination (for client components)
+export async function getTemplatesPaginatedAction({
+  userId,
+  page = 1,
+  pageSize = 10,
+  search = '',
+  status = 'all',
+}: {
+  userId: string
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+}) {
+  try {
+    const { getQuestionTemplates, getTemplateStats } = await import('./queries')
+
+    const [templatesResult, statsResult] = await Promise.all([
+      getQuestionTemplates({
+        userId,
+        page,
+        pageSize,
+        search,
+        status,
+        includeBase: true,
+      }),
+      getTemplateStats(userId),
+    ])
+
+    return {
+      success: true,
+      data: {
+        templates: templatesResult.data,
+        stats: statsResult,
+        page: templatesResult.page,
+        totalPages: templatesResult.totalPages,
+        count: templatesResult.count,
+        pageSize: templatesResult.pageSize,
+      },
+    }
+  } catch (error) {
+    console.error('Error fetching templates:', error)
+    return { success: false, error: 'Failed to fetch templates' }
+  }
+}
+
 // ============================================================================
 // BASE TEMPLATE ACTIONS (Super Admin)
 // ============================================================================

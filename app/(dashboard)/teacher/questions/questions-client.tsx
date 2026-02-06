@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useEffect, useTransition } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useRef, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TemplateModal } from "@/components/teacher/template-modal"
+import { toast } from "sonner"
 import {
   FileText,
   Plus,
@@ -32,7 +32,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { QuestionTemplate, TemplateQuestion } from "@/lib/supabase/queries"
-import { deleteTemplate, duplicateTemplate, toggleTemplateStatus, createTemplate, updateTemplate } from "@/lib/supabase/actions"
+import { deleteTemplate, duplicateTemplate, toggleTemplateStatus, createTemplate, updateTemplate, getTemplatesPaginatedAction } from "@/lib/supabase/actions"
 
 const questionTypes = [
   { id: "rating", label: "Rating Scale", icon: Star, color: "text-amber-500", bg: "bg-amber-50" },
@@ -62,25 +62,29 @@ interface QuestionsPageClientProps {
 export default function QuestionsPageClient({
   userId,
   initialTemplates,
-  totalCount,
-  currentPage,
-  totalPages,
+  totalCount: initialTotalCount,
+  currentPage: initialCurrentPage,
+  totalPages: initialTotalPages,
   pageSize,
   initialSearch,
   initialStatus,
-  stats,
+  stats: initialStats,
 }: QuestionsPageClientProps) {
+  // Local state management
+  const [templates, setTemplates] = useState<QuestionTemplate[]>(initialTemplates)
+  const [stats, setStats] = useState(initialStats)
   const [searchQuery, setSearchQuery] = useState(initialSearch)
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<QuestionTemplate | null>(null)
   const [statusFilter, setStatusFilter] = useState(initialStatus)
-  const [isPending, startTransition] = useTransition()
+  const [currentPage, setCurrentPage] = useState(initialCurrentPage)
+  const [totalPages, setTotalPages] = useState(initialTotalPages)
+  const [totalCount, setTotalCount] = useState(initialTotalCount)
+  const [isLoading, setIsLoading] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -93,33 +97,63 @@ export default function QuestionsPageClient({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Update URL with filters (debounced for search)
+  // Debounced search
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      const params = new URLSearchParams()
-      if (searchQuery) params.set('search', searchQuery)
-      if (statusFilter !== 'all') params.set('status', statusFilter)
-      params.set('page', '1')
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
 
-      startTransition(() => {
-        router.push(`/teacher/questions?${params.toString()}`)
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchTemplates(1, searchQuery, statusFilter)
+    }, 500)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
+
+  // Filter change handler
+  useEffect(() => {
+    fetchTemplates(1, searchQuery, statusFilter)
+  }, [statusFilter])
+
+  // Fetch templates from server
+  const fetchTemplates = async (page: number, search: string, status: string) => {
+    setIsLoading(true)
+    try {
+      const result = await getTemplatesPaginatedAction({
+        userId,
+        page,
+        pageSize,
+        search,
+        status,
       })
-    }, 300)
 
-    return () => clearTimeout(timeout)
-  }, [searchQuery, statusFilter, router])
-
-  const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('page', newPage.toString())
-
-    startTransition(() => {
-      router.push(`/teacher/questions?${params.toString()}`)
-    })
+      if (result.success && result.data) {
+        setTemplates(result.data.templates)
+        setStats(result.data.stats)
+        setCurrentPage(result.data.page)
+        setTotalPages(result.data.totalPages)
+        setTotalCount(result.data.count)
+      } else {
+        toast.error(result.error || 'Failed to fetch templates')
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error)
+      toast.error('Failed to fetch templates')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const baseTemplate = initialTemplates.find(t => t.is_base)
-  const customTemplates = initialTemplates.filter(t => !t.is_base)
+  const handlePageChange = (newPage: number) => {
+    fetchTemplates(newPage, searchQuery, statusFilter)
+  }
+
+  const baseTemplate = templates.find(t => t.is_base)
+  const customTemplates = templates.filter(t => !t.is_base)
 
   const getTypeConfig = (type: string) => {
     return questionTypes.find((t) => t.id === type) || questionTypes[0]
@@ -130,27 +164,40 @@ export default function QuestionsPageClient({
       return
     }
 
-    startTransition(async () => {
-      const result = await deleteTemplate(templateId, userId)
-      if (result.success) {
-        setOpenDropdown(null)
-        router.refresh()
-      } else {
-        alert(result.error || 'Failed to delete template')
+    // Optimistic update - remove from UI immediately
+    const templateToDelete = templates.find(t => t.id === templateId)
+    setTemplates(prev => prev.filter(t => t.id !== templateId))
+    setOpenDropdown(null)
+
+    const result = await deleteTemplate(templateId, userId)
+
+    if (result.success) {
+      toast.success('Template deleted successfully')
+      // Refresh to get updated stats
+      await fetchTemplates(currentPage, searchQuery, statusFilter)
+    } else {
+      toast.error(result.error || 'Failed to delete template')
+      // Revert optimistic update
+      if (templateToDelete) {
+        setTemplates(prev => [...prev, templateToDelete].sort((a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        ))
       }
-    })
+    }
   }
 
   const handleDuplicate = async (templateId: string) => {
-    startTransition(async () => {
-      const result = await duplicateTemplate(templateId, userId)
-      if (result.success) {
-        setOpenDropdown(null)
-        router.refresh()
-      } else {
-        alert(result.error || 'Failed to duplicate template')
-      }
-    })
+    setOpenDropdown(null)
+
+    const result = await duplicateTemplate(templateId, userId)
+
+    if (result.success) {
+      toast.success('Template duplicated successfully')
+      // Refresh to show new template
+      await fetchTemplates(currentPage, searchQuery, statusFilter)
+    } else {
+      toast.error(result.error || 'Failed to duplicate template')
+    }
   }
 
   const handleEdit = (template: QuestionTemplate) => {
@@ -159,15 +206,30 @@ export default function QuestionsPageClient({
   }
 
   const handleToggleStatus = async (templateId: string) => {
-    startTransition(async () => {
-      const result = await toggleTemplateStatus(templateId, userId)
-      if (result.success) {
-        setOpenDropdown(null)
-        router.refresh()
-      } else {
-        alert(result.error || 'Failed to toggle status')
-      }
-    })
+    const template = templates.find(t => t.id === templateId)
+    if (!template) return
+
+    const newStatus = template.status === 'active' ? 'inactive' : 'active'
+
+    // Optimistic update
+    setTemplates(prev => prev.map(t =>
+      t.id === templateId ? { ...t, status: newStatus } : t
+    ))
+    setOpenDropdown(null)
+
+    const result = await toggleTemplateStatus(templateId, userId)
+
+    if (result.success) {
+      toast.success(`Template ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
+      // Refresh to get updated stats
+      await fetchTemplates(currentPage, searchQuery, statusFilter)
+    } else {
+      toast.error(result.error || 'Failed to toggle status')
+      // Revert optimistic update
+      setTemplates(prev => prev.map(t =>
+        t.id === templateId ? { ...t, status: template.status } : t
+      ))
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -191,59 +253,89 @@ export default function QuestionsPageClient({
     }
   }
 
-  const handleTemplateSubmit = (data: {
+  const handleTemplateSubmit = async (data: {
     name: string
     description: string
     questions: { id: number; text: string; type: string; required: boolean; scale?: number; options?: string[] }[]
   }) => {
-    startTransition(async () => {
-      if (editingTemplate) {
-        const result = await updateTemplate(editingTemplate.id, userId, {
-          name: data.name,
-          description: data.description,
-          questions: data.questions.map((q, i) => ({
-            text: q.text,
-            type: q.type as 'rating' | 'text' | 'multiple' | 'boolean' | 'numeric',
-            required: q.required,
-            scale: q.scale,
-            options: q.options,
-            order_index: i,
-          })),
-        })
-        if (!result.success) {
-          alert(result.error || 'Failed to update template')
-          return
-        }
-      } else {
-        const result = await createTemplate(userId, {
-          name: data.name,
-          description: data.description,
-          questions: data.questions.map((q, i) => ({
-            text: q.text,
-            type: q.type as 'rating' | 'text' | 'multiple' | 'boolean' | 'numeric',
-            required: q.required,
-            scale: q.scale,
-            options: q.options,
-            order_index: i,
-          })),
-        })
-        if (!result.success) {
-          alert(result.error || 'Failed to create template')
-          return
-        }
-      }
+    if (editingTemplate) {
+      // Optimistic update for edit
+      setTemplates(prev => prev.map(t =>
+        t.id === editingTemplate.id
+          ? { ...t, name: data.name, description: data.description || '' }
+          : t
+      ))
 
-      setIsCreateModalOpen(false)
-      setEditingTemplate(null)
-      router.refresh()
-    })
+      const result = await updateTemplate(editingTemplate.id, userId, {
+        name: data.name,
+        description: data.description,
+        questions: data.questions.map((q, i) => ({
+          text: q.text,
+          type: q.type as 'rating' | 'text' | 'multiple' | 'boolean' | 'numeric',
+          required: q.required,
+          scale: q.scale,
+          options: q.options,
+          order_index: i,
+        })),
+      })
+
+      if (result.success) {
+        toast.success('Template updated successfully')
+        setEditingTemplate(null)
+        // Refresh to get complete updated data
+        await fetchTemplates(currentPage, searchQuery, statusFilter)
+      } else {
+        toast.error(result.error || 'Failed to update template')
+        // Revert optimistic update
+        await fetchTemplates(currentPage, searchQuery, statusFilter)
+      }
+    } else {
+      const result = await createTemplate(userId, {
+        name: data.name,
+        description: data.description,
+        questions: data.questions.map((q, i) => ({
+          text: q.text,
+          type: q.type as 'rating' | 'text' | 'multiple' | 'boolean' | 'numeric',
+          required: q.required,
+          scale: q.scale,
+          options: q.options,
+          order_index: i,
+        })),
+      })
+
+      if (result.success) {
+        toast.success('Template created successfully')
+        setIsCreateModalOpen(false)
+        // Refresh to show new template
+        await fetchTemplates(1, searchQuery, statusFilter)
+      } else {
+        toast.error(result.error || 'Failed to create template')
+        return
+      }
+    }
+
+    setIsCreateModalOpen(false)
+    setEditingTemplate(null)
   }
 
   return (
     <>
       <div className="space-y-6">
-            {/* Create Template Button */}
-            <div className="flex justify-end">
+            {/* Header with Create Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                    Question Templates
+                  </h1>
+                </div>
+                <p className="text-slate-500">
+                  Create and manage reusable question sets
+                </p>
+              </div>
               <Button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:shadow-lg hover:shadow-indigo-200 transition-all border-0"
@@ -254,7 +346,7 @@ export default function QuestionsPageClient({
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-indigo-50">
@@ -285,17 +377,6 @@ export default function QuestionsPageClient({
                   <div>
                     <p className="text-2xl font-bold text-slate-900">{stats.totalQuestions}</p>
                     <p className="text-xs text-slate-500">Total Questions</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-50">
-                    <Star className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-900">{stats.totalUsage}</p>
-                    <p className="text-xs text-slate-500">Total Usage</p>
                   </div>
                 </div>
               </div>
@@ -370,9 +451,6 @@ export default function QuestionsPageClient({
                             <span className="text-slate-500">
                               <span className="font-semibold text-slate-700">{baseTemplate.questions.length}</span> questions
                             </span>
-                            <span className="text-slate-500">
-                              Used <span className="font-semibold text-slate-700">{baseTemplate.usage_count}</span> times
-                            </span>
                           </div>
                         </div>
                       </div>
@@ -380,14 +458,14 @@ export default function QuestionsPageClient({
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={isPending}
+                          disabled={isLoading}
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDuplicate(baseTemplate.id)
                           }}
                           className="gap-1.5"
                         >
-                          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
                           Duplicate
                         </Button>
                         <button className="p-2 hover:bg-white/50 rounded-lg transition-colors">
@@ -466,16 +544,9 @@ export default function QuestionsPageClient({
                     <Layers className="w-8 h-8 text-slate-400" />
                   </div>
                   <h3 className="font-semibold text-slate-900 mb-2">No custom templates yet</h3>
-                  <p className="text-sm text-slate-500 mb-4">
+                  <p className="text-sm text-slate-500">
                     Create your first template or duplicate the base template to get started
                   </p>
-                  <Button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create Template
-                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -512,10 +583,6 @@ export default function QuestionsPageClient({
                               <span className="flex items-center gap-1.5">
                                 <MessageSquare className="w-4 h-4" />
                                 {template.questions.length} questions
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <Star className="w-4 h-4" />
-                                Used {template.usage_count} times
                               </span>
                               <span className="flex items-center gap-1.5">
                                 <Calendar className="w-4 h-4" />
@@ -682,7 +749,7 @@ export default function QuestionsPageClient({
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    disabled={currentPage === 1 || isPending}
+                    disabled={currentPage === 1 || isLoading}
                     onClick={() => handlePageChange(currentPage - 1)}
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -710,7 +777,7 @@ export default function QuestionsPageClient({
                             : ""
                         }`}
                         onClick={() => handlePageChange(pageNum)}
-                        disabled={isPending}
+                        disabled={isLoading}
                       >
                         {pageNum}
                       </Button>
@@ -721,7 +788,7 @@ export default function QuestionsPageClient({
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    disabled={currentPage === totalPages || isPending}
+                    disabled={currentPage === totalPages || isLoading}
                     onClick={() => handlePageChange(currentPage + 1)}
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -729,22 +796,6 @@ export default function QuestionsPageClient({
                 </div>
               </div>
             )}
-
-            {/* Add Template Card */}
-            <div
-              onClick={() => setIsCreateModalOpen(true)}
-              className="border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer group"
-            >
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center mb-4 transition-colors">
-                <Plus className="w-7 h-7 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-              </div>
-              <h3 className="font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors mb-1">
-                Create New Template
-              </h3>
-              <p className="text-sm text-slate-500">
-                Build a custom question template for your sessions
-              </p>
-            </div>
       </div>
 
       {/* Create/Edit Template Modal */}

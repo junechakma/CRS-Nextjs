@@ -13,31 +13,18 @@ interface PageProps {
   }>
 }
 
-// Static header that shows immediately
-function PageHeader() {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
-            <FileText className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Question Templates
-          </h1>
-        </div>
-        <p className="text-slate-500">
-          Create and manage reusable question sets
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // Skeleton for dynamic content only (stats + data list)
 function LoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-10 w-64 bg-slate-200 rounded-xl" />
+          <div className="h-4 w-48 bg-slate-200 rounded" />
+        </div>
+        <div className="h-10 w-40 bg-slate-200 rounded-xl" />
+      </div>
       {/* Stats Grid Skeleton */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
@@ -105,9 +92,6 @@ async function QuestionsContent({ searchParams }: PageProps) {
 export default function QuestionsPage({ searchParams }: PageProps) {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* Static header - shows immediately */}
-      <PageHeader />
-
       {/* Dynamic content - shows skeleton while loading */}
       <Suspense fallback={<LoadingSkeleton />}>
         <QuestionsContent searchParams={searchParams} />
