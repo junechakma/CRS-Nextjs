@@ -164,8 +164,9 @@ export default function AnalyticsClient({ analytics }: AnalyticsClientProps) {
     }
 
     if (question.type === "multiple") {
+      // Check both answer_choice (new) and answer_text (old) for multiple choice
       const choices = question.responses
-        .map((r) => r.answer_choice)
+        .map((r) => r.answer_choice || r.answer_text)
         .filter((c): c is string => c !== null)
 
       if (choices.length === 0) return null
@@ -284,7 +285,7 @@ export default function AnalyticsClient({ analytics }: AnalyticsClientProps) {
           )}
           <div className="flex items-center gap-2 text-slate-600">
             <Users className="w-4 h-4 text-slate-400" />
-            {session.expected_students} students expected
+            {session.response_count} {session.response_count === 1 ? "response" : "responses"} received
           </div>
         </div>
       </div>
@@ -299,24 +300,41 @@ export default function AnalyticsClient({ analytics }: AnalyticsClientProps) {
           </div>
           <p className="text-3xl font-bold text-slate-900">{session.response_count}</p>
           <p className="text-sm text-slate-500">Total Responses</p>
-          <p className="text-xs text-emerald-600 mt-1">of {session.expected_students} students</p>
+          <p className="text-xs text-emerald-600 mt-1">
+            {session.expected_students > 0
+              ? `of ${session.expected_students} expected`
+              : "Anonymous submissions"}
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-indigo-50">
-              <TrendingUp className="w-5 h-5 text-indigo-600" />
+        {session.expected_students > 0 ? (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-indigo-50">
+                <TrendingUp className="w-5 h-5 text-indigo-600" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">{responseRate}%</p>
+            <p className="text-sm text-slate-500">Response Rate</p>
+            <div className="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"
+                style={{ width: `${responseRate}%` }}
+              />
             </div>
           </div>
-          <p className="text-3xl font-bold text-slate-900">{responseRate}%</p>
-          <p className="text-sm text-slate-500">Response Rate</p>
-          <div className="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"
-              style={{ width: `${responseRate}%` }}
-            />
+        ) : (
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-indigo-50">
+                <MessageSquare className="w-5 h-5 text-indigo-600" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">{session.response_count}</p>
+            <p className="text-sm text-slate-500">Submissions</p>
+            <p className="text-xs text-indigo-600 mt-1">Anonymous feedback</p>
           </div>
-        </div>
+        )}
 
         <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
           <div className="flex items-center gap-3 mb-3">

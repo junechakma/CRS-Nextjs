@@ -16,6 +16,7 @@ import {
   Pencil,
   CheckCircle2,
   StopCircle,
+  Users,
 } from "lucide-react"
 
 interface Session {
@@ -34,6 +35,7 @@ interface Session {
   duration: string
   courseId?: string
   templateId?: string
+  expectedStudents?: number
 }
 
 interface EditSessionModalProps {
@@ -56,6 +58,7 @@ interface SessionFormData {
   endTime: string
   accessCode: string
   status: "scheduled" | "live" | "completed"
+  expectedStudents: number
 }
 
 // Generate random access code
@@ -116,6 +119,7 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
     endTime: "",
     accessCode: "",
     status: "scheduled",
+    expectedStudents: 0,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof SessionFormData, string>>>({})
@@ -137,6 +141,7 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
         endTime: convertTo24Hour(session.endTime),
         accessCode: session.accessCode,
         status: session.status as "scheduled" | "live" | "completed",
+        expectedStudents: session.expectedStudents || session.total || 0,
       })
       setErrors({})
     }
@@ -346,6 +351,25 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Expected Students */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <Users className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                Expected Students <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.expectedStudents || ""}
+                onChange={(e) => setFormData({ ...formData, expectedStudents: parseInt(e.target.value) || 0 })}
+                placeholder="Leave blank for anonymous sessions"
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm"
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                Only fill if you have a fixed class roster. Leave blank for open anonymous feedback.
+              </p>
             </div>
 
             {/* Date */}

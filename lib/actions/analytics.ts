@@ -276,8 +276,9 @@ Question ${idx + 1}: ${q.text}
         questionSummary += `
 - Sample Responses: ${textResponses.slice(0, 5).join("; ")}`
       } else if (q.type === "multiple" && q.responses.length > 0) {
+        // Check both answer_choice (new) and answer_text (old) for multiple choice
         const choices = q.responses
-          .map((r) => r.answer_choice)
+          .map((r) => r.answer_choice || r.answer_text)
           .filter((c): c is string => c !== null)
         const distribution: Record<string, number> = {}
         choices.forEach((c) => {

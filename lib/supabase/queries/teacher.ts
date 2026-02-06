@@ -925,6 +925,7 @@ export async function getTeacherSemestersList(userId: string) {
 export interface SessionData {
   id: string
   name: string
+  description?: string | null
   course: string
   courseCode: string
   courseId: string
@@ -1044,6 +1045,7 @@ export async function getTeacherSessionsPaginated({
     return {
       id: session.id,
       name: session.name,
+      description: session.description,
       course: session.course_name || 'Unknown Course',
       courseCode: session.course_code || '',
       courseId: session.course_id,

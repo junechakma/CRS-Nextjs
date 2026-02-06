@@ -103,6 +103,20 @@ export async function submitSessionResponse({
     // Calculate completion time (you could track this in the frontend)
     const completionTimeSeconds = 0 // Placeholder - could be tracked in frontend
 
+    // Fetch question types to properly map answers
+    const questionIds = responses.map((r) => r.questionId)
+    const { data: questions, error: questionsError } = await supabase
+      .from("session_questions")
+      .select("id, type")
+      .in("id", questionIds)
+
+    if (questionsError) {
+      console.error("Error fetching questions:", questionsError)
+      return { success: false, error: "Failed to fetch question types" }
+    }
+
+    const questionTypeMap = new Map(questions?.map((q) => [q.id, q.type]) || [])
+
     // Create a response record
     const { data: responseRecord, error: responseError } = await supabase
       .from("session_responses")
@@ -120,7 +134,7 @@ export async function submitSessionResponse({
       return { success: false, error: "Failed to submit response" }
     }
 
-    // Insert individual answers with correct column names
+    // Insert individual answers with correct column names based on question type
     const answers = responses
       .filter((r) => r.value !== null && r.value !== "")
       .map((r) => {
@@ -129,15 +143,29 @@ export async function submitSessionResponse({
           question_id: r.questionId,
         }
 
-        // Map to correct column based on value type
-        if (typeof r.value === "string") {
-          answer.answer_text = r.value
-        } else if (typeof r.value === "number") {
-          // Determine if it's a rating (1-10) or numeric answer
+        const questionType = questionTypeMap.get(r.questionId)
+
+        // Map to correct column based on question type
+        if (questionType === "rating") {
           answer.answer_rating = r.value
+        } else if (questionType === "numeric") {
           answer.answer_numeric = r.value
-        } else if (typeof r.value === "boolean") {
+        } else if (questionType === "boolean") {
           answer.answer_boolean = r.value
+        } else if (questionType === "multiple") {
+          answer.answer_choice = r.value
+        } else if (questionType === "text") {
+          answer.answer_text = r.value
+        } else {
+          // Fallback based on value type
+          if (typeof r.value === "string") {
+            answer.answer_text = r.value
+          } else if (typeof r.value === "number") {
+            answer.answer_rating = r.value
+            answer.answer_numeric = r.value
+          } else if (typeof r.value === "boolean") {
+            answer.answer_boolean = r.value
+          }
         }
 
         return answer

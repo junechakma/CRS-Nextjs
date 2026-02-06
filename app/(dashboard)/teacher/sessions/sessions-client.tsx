@@ -201,13 +201,25 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
       )
     )
 
+    // Construct proper ISO timestamps from date and time inputs
+    let startTimeISO = null
+    let endTimeISO = null
+
+    if (data.date && data.startTime) {
+      startTimeISO = new Date(`${data.date}T${data.startTime}`).toISOString()
+    }
+
+    if (data.date && data.endTime) {
+      endTimeISO = new Date(`${data.date}T${data.endTime}`).toISOString()
+    }
+
     const updateInput: UpdateSessionInput = {
       id: editingSession.id,
       name: data.name,
       description: data.description,
-      scheduledDate: data.scheduledDate,
-      startTime: data.startTime,
-      endTime: data.endTime,
+      scheduledDate: data.date || null,
+      startTime: startTimeISO,
+      endTime: endTimeISO,
       durationMinutes: data.durationMinutes,
       expectedStudents: data.expectedStudents,
       status: data.status,
@@ -493,6 +505,11 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
                             {session.courseCode}
                           </span>
                         </div>
+                        {session.description && (
+                          <p className="text-xs text-slate-500 mt-2 line-clamp-2">
+                            {session.description}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -607,7 +624,15 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
               <div className="border-t border-slate-100 px-5 py-3 bg-slate-50/50 flex items-center justify-between">
                 <span className="text-sm text-slate-600 flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-slate-400" />
-                  <span className="font-semibold text-slate-700">{session.responses}</span> / {session.total} responded
+                  {session.total > 0 ? (
+                    <>
+                      <span className="font-semibold text-slate-700">{session.responses}</span> / {session.total} responded
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-slate-700">{session.responses}</span> {session.responses === 1 ? "response" : "responses"}
+                    </>
+                  )}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -726,7 +751,7 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
               <div className="p-6 flex flex-col items-center">
                 <div className="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm mb-4">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrSession.accessCode)}&bgcolor=ffffff&color=1e293b&margin=0`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://classresponse.com/feedback/${qrSession.accessCode}`)}&bgcolor=ffffff&color=1e293b&margin=0`}
                     alt={`QR Code for ${qrSession.accessCode}`}
                     className="w-48 h-48"
                   />
@@ -756,7 +781,7 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
                   <Button
                     onClick={() => {
                       const link = document.createElement("a")
-                      link.href = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrSession.accessCode)}&bgcolor=ffffff&color=1e293b&margin=10`
+                      link.href = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`https://classresponse.com/feedback/${qrSession.accessCode}`)}&bgcolor=ffffff&color=1e293b&margin=10`
                       link.download = `qr-${qrSession.accessCode}.png`
                       link.click()
                     }}
