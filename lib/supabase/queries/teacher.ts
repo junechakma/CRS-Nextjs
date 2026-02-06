@@ -744,6 +744,7 @@ export interface CourseData {
   id: string
   name: string
   code: string
+  description?: string | null
   semester: string
   semester_id: string | null
   students: number
@@ -755,7 +756,87 @@ export interface CourseData {
 }
 
 /**
- * Get all courses for a teacher
+ * Get paginated courses for a teacher (OPTIMIZED with view)
+ */
+export async function getTeacherCoursesPaginated({
+  userId,
+  page = 1,
+  pageSize = 12,
+  search = '',
+  status = 'all',
+  semesterId = '',
+}: {
+  userId: string
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  semesterId?: string
+}): Promise<PaginatedResult<CourseData>> {
+  const supabase = await createClient()
+
+  const offset = (page - 1) * pageSize
+
+  // Build query using optimized view
+  let query = supabase
+    .from('course_stats_paginated')
+    .select('*', { count: 'exact' })
+    .eq('user_id', userId)
+
+  // Apply status filter
+  if (status !== 'all') {
+    query = query.eq('status', status)
+  }
+
+  // Apply semester filter
+  if (semesterId && semesterId !== 'all') {
+    query = query.eq('semester_id', semesterId)
+  }
+
+  // Apply search filter (name or code)
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,code.ilike.%${search}%`)
+  }
+
+  // Apply sorting and pagination
+  query = query
+    .order('last_activity', { ascending: false, nullsFirst: false })
+    .range(offset, offset + pageSize - 1)
+
+  const { data, error, count } = await query
+
+  if (error) {
+    console.error('Error fetching courses:', error)
+    return { data: [], count: 0, page, pageSize, totalPages: 0 }
+  }
+
+  // Transform data
+  const courses: CourseData[] = (data || []).map(course => ({
+    id: course.id,
+    name: course.name,
+    code: course.code,
+    description: course.description,
+    semester: course.semester_name || 'No Semester',
+    semester_id: course.semester_id,
+    students: course.expected_students || 0,
+    sessions: course.session_count || 0,
+    avg_rating: Math.round((course.avg_rating || 0) * 10) / 10,
+    last_activity: course.last_activity,
+    status: course.status as 'active' | 'archived',
+    color: course.color || 'indigo',
+  }))
+
+  return {
+    data: courses,
+    count: count || 0,
+    page,
+    pageSize,
+    totalPages: Math.ceil((count || 0) / pageSize),
+  }
+}
+
+/**
+ * Get all courses for a teacher (DEPRECATED - use getTeacherCoursesPaginated)
  */
 export async function getTeacherCourses(userId: string): Promise<CourseData[]> {
   const supabase = await createClient()
@@ -806,6 +887,7 @@ export async function getTeacherCourses(userId: string): Promise<CourseData[]> {
         id: course.id,
         name: course.name,
         code: course.code,
+        description: course.description,
         semester: semester?.name || 'No Semester',
         semester_id: course.semester_id,
         students: course.expected_students || 0,

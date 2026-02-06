@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { AddSemesterModal } from "@/components/teacher/add-semester-modal"
 import { EditSemesterModal } from "@/components/teacher/edit-semester-modal"
 import { SemesterData } from "@/lib/supabase/queries/teacher"
@@ -75,6 +76,8 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
   const [totalCount, setTotalCount] = useState(initialSemesters.length)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [semesterToDelete, setSemesterToDelete] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
@@ -614,6 +617,21 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
         }}
         semester={editingSemester}
         onSubmit={handleEditSemester}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setSemesterToDelete(null)
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Semester"
+        message="Are you sure you want to delete this semester? This action cannot be undone and will remove all associated data."
+        confirmText="Delete Semester"
+        cancelText="Cancel"
+        isDestructive={true}
+        isLoading={isSubmitting}
       />
     </>
   )

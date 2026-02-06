@@ -1,11 +1,19 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { CreateCourseModal } from "@/components/teacher/create-course-modal"
 import { EditCourseModal } from "@/components/teacher/edit-course-modal"
 import { CourseData } from "@/lib/supabase/queries/teacher"
 import { getTimeAgo } from "@/lib/supabase/queries/types"
+import {
+  getCoursesPaginatedAction,
+  createCourseAction,
+  updateCourseAction,
+  deleteCourseAction,
+} from "@/lib/actions/courses"
 import {
   GraduationCap,
   Plus,
@@ -22,7 +30,9 @@ import {
   Play,
   Archive,
   Eye,
+  Loader2,
 } from "lucide-react"
+import { toast } from "sonner"
 
 const colorMap: Record<string, { bg: string; text: string; border: string }> = {
   indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200" },
@@ -39,6 +49,7 @@ interface CoursesClientProps {
 }
 
 export default function CoursesClient({ courses: initialCourses, semesters }: CoursesClientProps) {
+  const router = useRouter()
   const [selectedSemester, setSelectedSemester] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -46,7 +57,15 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
   const [editingCourse, setEditingCourse] = useState<CourseData | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [courses, setCourses] = useState(initialCourses)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalCount, setTotalCount] = useState(initialCourses.length)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [courseToDelete, setCourseToDelete] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,13 +77,66 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const filteredCourses = courses.filter((course) => {
-    const matchesSemester = selectedSemester === "all" || course.semester_id === selectedSemester
-    const matchesSearch =
-      course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesSemester && matchesSearch
-  })
+  // Debounced search and filter - refetch from server
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setPage(1)
+      fetchCourses(1, searchQuery, selectedSemester, true)
+    }, 500)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery, selectedSemester])
+
+  // Fetch courses from server
+  const fetchCourses = async (
+    pageNum: number,
+    search: string,
+    semesterId: string,
+    reset: boolean = false
+  ) => {
+    setIsLoadingMore(true)
+
+    try {
+      const result = await getCoursesPaginatedAction({
+        page: pageNum,
+        pageSize: 12,
+        search,
+        status: 'all',
+        semesterId,
+      })
+
+      if (result.success) {
+        if (reset) {
+          setCourses(result.data)
+        } else {
+          setCourses(prev => [...prev, ...result.data])
+        }
+        setTotalCount(result.count || 0)
+        setHasMore(pageNum < (result.totalPages || 0))
+      }
+    } catch (error) {
+      console.error("Error fetching courses:", error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
+
+  // Load more function
+  const loadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      const nextPage = page + 1
+      setPage(nextPage)
+      fetchCourses(nextPage, searchQuery, selectedSemester, false)
+    }
+  }
 
   const handleEdit = (courseId: string) => {
     const course = courses.find(c => c.id === courseId)
@@ -75,18 +147,119 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
     setOpenDropdown(null)
   }
 
-  const handleStatusChange = (courseId: string, newStatus: string) => {
-    setCourses(prev =>
-      prev.map(course =>
-        course.id === courseId ? { ...course, status: newStatus as 'active' | 'archived' } : course
-      )
-    )
+  const handleStatusChange = async (courseId: string, newStatus: string) => {
+    setIsSubmitting(true)
     setOpenDropdown(null)
+
+    try {
+      const result = await updateCourseAction({
+        id: courseId,
+        status: newStatus as 'active' | 'archived',
+      })
+
+      if (result.success) {
+        // Optimistically update local state
+        setCourses(prev =>
+          prev.map(course =>
+            course.id === courseId ? { ...course, status: newStatus as 'active' | 'archived' } : course
+          )
+        )
+        toast.success("Course status updated successfully")
+      } else {
+        toast.error(result.error || "Failed to update course status")
+      }
+    } catch (error) {
+      toast.error("An error occurred while updating the course")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleDelete = (courseId: string) => {
-    setCourses(prev => prev.filter(course => course.id !== courseId))
+    setCourseToDelete(courseId)
+    setDeleteConfirmOpen(true)
     setOpenDropdown(null)
+  }
+
+  const confirmDelete = async () => {
+    if (!courseToDelete) return
+
+    setIsSubmitting(true)
+
+    try {
+      const result = await deleteCourseAction(courseToDelete)
+
+      if (result.success) {
+        setCourses(prev => prev.filter(course => course.id !== courseToDelete))
+        toast.success("Course deleted successfully")
+        setDeleteConfirmOpen(false)
+        setCourseToDelete(null)
+      } else {
+        toast.error(result.error || "Failed to delete course")
+      }
+    } catch (error) {
+      toast.error("An error occurred while deleting the course")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCreateCourse = async (data: any) => {
+    setIsSubmitting(true)
+
+    try {
+      const result = await createCourseAction(data)
+
+      if (result.success) {
+        toast.success("Course created successfully")
+        setIsCreateModalOpen(false)
+        setPage(1)
+        await fetchCourses(1, searchQuery, selectedSemester, true)
+      } else {
+        toast.error(result.error || "Failed to create course")
+      }
+    } catch (error) {
+      toast.error("An error occurred while creating the course")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleUpdateCourse = async (data: any) => {
+    if (!editingCourse) return
+
+    setIsSubmitting(true)
+
+    try {
+      const result = await updateCourseAction({
+        id: editingCourse.id,
+        ...data,
+      })
+
+      if (result.success) {
+        // Optimistically update local state
+        setCourses(prev =>
+          prev.map(course =>
+            course.id === editingCourse.id
+              ? { ...course, ...data }
+              : course
+          )
+        )
+        toast.success("Course updated successfully")
+        setIsEditModalOpen(false)
+        setEditingCourse(null)
+      } else {
+        toast.error(result.error || "Failed to update course")
+      }
+    } catch (error) {
+      toast.error("An error occurred while updating the course")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -162,7 +335,7 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course) => {
+          {courses.map((course) => {
             const colors = colorMap[course.color] || colorMap.indigo
             return (
               <div
@@ -259,7 +432,7 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
                     <h3 className="font-semibold text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors line-clamp-2">
                       {course.name}
                     </h3>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mb-2">
                       <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                         {course.code}
                       </span>
@@ -268,6 +441,11 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
                         {course.semester}
                       </span>
                     </div>
+                    {course.description && (
+                      <p className="text-sm text-slate-500 line-clamp-2">
+                        {course.description}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 mb-4">
@@ -330,15 +508,43 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
             </p>
           </div>
         </div>
+
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="flex justify-center mt-8">
+            <Button
+              onClick={loadMore}
+              disabled={isLoadingMore}
+              className="px-8 py-3 bg-white border-2 border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 rounded-xl font-medium transition-all"
+            >
+              {isLoadingMore ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Load More Courses
+                  <ChevronRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Results Info */}
+        {courses.length > 0 && (
+          <div className="text-center mt-6 text-sm text-slate-500">
+            Showing {courses.length} of {totalCount} courses
+          </div>
+        )}
       </div>
 
       <CreateCourseModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         semesters={semesters}
-        onSubmit={(data) => {
-          console.log("New course:", data)
-        }}
+        onSubmit={handleCreateCourse}
       />
 
       <EditCourseModal
@@ -349,9 +555,22 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
         }}
         semesters={semesters}
         course={editingCourse}
-        onSubmit={(data) => {
-          console.log("Edit course:", data)
+        onSubmit={handleUpdateCourse}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setCourseToDelete(null)
         }}
+        onConfirm={confirmDelete}
+        title="Delete Course"
+        message="Are you sure you want to delete this course? This action cannot be undone and will remove all sessions and data associated with this course."
+        confirmText="Delete Course"
+        cancelText="Cancel"
+        isDestructive={true}
+        isLoading={isSubmitting}
       />
     </>
   )

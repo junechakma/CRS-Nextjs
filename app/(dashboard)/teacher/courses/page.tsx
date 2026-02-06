@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { getTeacherCourses, getTeacherSemestersList } from "@/lib/supabase/queries/teacher"
+import { getTeacherCoursesPaginated, getTeacherSemestersList } from "@/lib/supabase/queries/teacher"
 import CoursesClient from "./courses-client"
 import { GraduationCap } from "lucide-react"
 
@@ -75,14 +75,22 @@ async function CoursesContent() {
     redirect('/super-admin')
   }
 
-  const [courses, semesters] = await Promise.all([
-    getTeacherCourses(user.id),
+  // Fetch first page of courses (12 items) and semesters list
+  const [coursesResult, semesters] = await Promise.all([
+    getTeacherCoursesPaginated({
+      userId: user.id,
+      page: 1,
+      pageSize: 12,
+      search: '',
+      status: 'all',
+      semesterId: '',
+    }),
     getTeacherSemestersList(user.id)
   ])
 
   return (
     <CoursesClient
-      courses={courses}
+      courses={coursesResult.data}
       semesters={semesters}
     />
   )

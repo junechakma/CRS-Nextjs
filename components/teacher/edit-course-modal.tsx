@@ -21,19 +21,21 @@ interface EditCourseModalProps {
   onSubmit?: (data: CourseFormData) => void
   semesters: { id: string; name: string }[]
   course: {
-    id: number
+    id: string
     name: string
     code: string
+    description?: string | null
     semester: string
+    semester_id?: string | null
     color: string
   } | null
 }
 
 interface CourseFormData {
-  id: number
   name: string
   code: string
-  semester: string
+  description: string
+  semesterId: string
   color: string
 }
 
@@ -48,10 +50,10 @@ const colorOptions = [
 
 export function EditCourseModal({ isOpen, onClose, onSubmit, semesters, course }: EditCourseModalProps) {
   const [formData, setFormData] = useState<CourseFormData>({
-    id: 0,
     name: "",
     code: "",
-    semester: "",
+    description: "",
+    semesterId: "",
     color: "indigo",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -60,13 +62,13 @@ export function EditCourseModal({ isOpen, onClose, onSubmit, semesters, course }
   // Populate form when course changes
   useEffect(() => {
     if (course) {
-      // Find semester id from name
-      const semesterId = semesters.find(s => s.name === course.semester)?.id || course.semester.toLowerCase().replace(" ", "-")
+      // Use semester_id if available, otherwise try to find from name
+      const semesterId = course.semester_id || semesters.find(s => s.name === course.semester)?.id || ""
       setFormData({
-        id: course.id,
         name: course.name,
         code: course.code,
-        semester: semesterId,
+        description: course.description || "",
+        semesterId: semesterId,
         color: course.color,
       })
       setErrors({})
@@ -226,6 +228,27 @@ export function EditCourseModal({ isOpen, onClose, onSubmit, semesters, course }
                     {errors.semester}
                   </p>
                 )}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <FileText className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                Description <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description of the course content and objectives..."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm resize-none"
+                />
+                <div className="absolute bottom-2 right-3 text-xs text-slate-400">
+                  {formData.description.length}/500
+                </div>
               </div>
             </div>
 
