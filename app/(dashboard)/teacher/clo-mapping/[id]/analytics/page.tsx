@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCLOSet, getCLOs } from '@/lib/supabase/queries/teacher'
-import CLOSetDetailClient from './clo-set-detail-client'
-import { Target, Loader2 } from 'lucide-react'
+import { getCLOSet, getCLOs, getAnalysisDocuments } from '@/lib/supabase/queries/teacher'
+import CLOAnalyticsClient from './analytics-client'
+import { Loader2 } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{
@@ -11,7 +11,7 @@ interface PageProps {
   }>
 }
 
-function CLOSetDetailSkeleton() {
+function CLOAnalyticsSkeleton() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col gap-4 animate-pulse">
@@ -25,20 +25,20 @@ function CLOSetDetailSkeleton() {
         </div>
       </div>
 
-      <div className="h-20 bg-slate-200 rounded-2xl" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="h-32 bg-slate-200 rounded-2xl" />
+        <div className="h-32 bg-slate-200 rounded-2xl" />
+        <div className="h-32 bg-slate-200 rounded-2xl" />
+      </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 bg-slate-200 rounded-xl" />
-          ))}
-        </div>
+        <div className="h-64 bg-slate-200 rounded-xl" />
       </div>
     </div>
   )
 }
 
-async function CLOSetDetailContent({ params }: PageProps) {
+async function CLOAnalyticsContent({ params }: PageProps) {
   const { id } = await params
   const supabase = await createClient()
 
@@ -59,10 +59,11 @@ async function CLOSetDetailContent({ params }: PageProps) {
     redirect('/super-admin')
   }
 
-  // Fetch CLO set and CLOs
-  const [cloSet, clos] = await Promise.all([
+  // Fetch CLO set, CLOs, and existing analysis documents
+  const [cloSet, clos, documents] = await Promise.all([
     getCLOSet(id, user.id),
     getCLOs(id),
+    getAnalysisDocuments(id),
   ])
 
   if (!cloSet) {
@@ -70,18 +71,19 @@ async function CLOSetDetailContent({ params }: PageProps) {
   }
 
   return (
-    <CLOSetDetailClient
+    <CLOAnalyticsClient
       cloSet={cloSet}
       clos={clos}
+      initialDocuments={documents}
       userId={user.id}
     />
   )
 }
 
-export default function CLOSetDetailPage({ params }: PageProps) {
+export default function CLOAnalyticsPage({ params }: PageProps) {
   return (
-    <Suspense fallback={<CLOSetDetailSkeleton />}>
-      <CLOSetDetailContent params={params} />
+    <Suspense fallback={<CLOAnalyticsSkeleton />}>
+      <CLOAnalyticsContent params={params} />
     </Suspense>
   )
 }

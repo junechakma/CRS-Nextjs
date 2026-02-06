@@ -1254,12 +1254,43 @@ export interface CLOQuestionMapping {
 }
 
 /**
- * Get all CLO sets for a teacher
+ * Get all CLO sets for a teacher (for backward compatibility)
  */
 export async function getTeacherCLOSets(userId: string): Promise<CLOSetData[]> {
+  const result = await getTeacherCLOSetsPaginated({
+    userId,
+    page: 1,
+    pageSize: 1000, // Large number to get all
+  })
+  return result.data
+}
+
+/**
+ * Get paginated CLO sets for a teacher
+ */
+export async function getTeacherCLOSetsPaginated({
+  userId,
+  page = 1,
+  pageSize = 12,
+  search = '',
+  courseId = '',
+}: {
+  userId: string
+  page?: number
+  pageSize?: number
+  search?: string
+  courseId?: string
+}): Promise<{
+  data: CLOSetData[]
+  count: number
+  page: number
+  pageSize: number
+  totalPages: number
+}> {
   const supabase = await createClient()
 
-  const { data: cloSets } = await supabase
+  // Build query
+  let query = supabase
     .from('clo_sets')
     .select(`
       id,
@@ -1275,13 +1306,43 @@ export async function getTeacherCLOSets(userId: string): Promise<CLOSetData[]> {
         name,
         code
       )
-    `)
+    `, { count: 'exact' })
     .eq('user_id', userId)
+
+  // Apply filters
+  if (courseId && courseId !== 'all') {
+    query = query.eq('course_id', courseId)
+  }
+
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
+  }
+
+  // Get total count
+  const { count } = await query
+
+  // Apply pagination and ordering
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  const { data: cloSets } = await query
     .order('created_at', { ascending: false })
+    .range(from, to)
 
-  if (!cloSets) return []
+  const totalCount = count || 0
+  const totalPages = Math.ceil(totalCount / pageSize)
 
-  return cloSets.map(set => {
+  if (!cloSets) {
+    return {
+      data: [],
+      count: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+    }
+  }
+
+  const formattedData = cloSets.map(set => {
     const course = set.courses as unknown as { id: string; name: string; code: string } | null
     return {
       id: set.id,
@@ -1297,6 +1358,14 @@ export async function getTeacherCLOSets(userId: string): Promise<CLOSetData[]> {
       color: set.color || 'indigo',
     }
   })
+
+  return {
+    data: formattedData,
+    count: totalCount,
+    page,
+    pageSize,
+    totalPages,
+  }
 }
 
 /**
@@ -1403,6 +1472,266 @@ export async function getCLOQuestionMappings(cloSetId: string): Promise<CLOQuest
     aiReasoning: m.ai_reasoning,
     confidence: parseFloat(m.confidence) || 0,
   }))
+}
+
+// ============================================================================
+// CLO ANALYTICS QUERIES
+// ============================================================================
+
+export interface AnalysisDocumentData {
+  id: string
+  cloSetId: string
+  fileName: string | null
+  fileUrl: string | null
+  fileSize: number | null
+  fileType: string
+  status: 'pending' | 'parsing' | 'parsed' | 'analyzing' | 'completed' | 'failed'
+  errorMessage: string | null
+  totalQuestions: number
+  uploadedAt: string
+  parsedAt: string | null
+  analyzedAt: string | null
+}
+
+export interface AnalysisQuestionData {
+  id: string
+  documentId: string
+  questionNumber: number
+  questionText: string
+  bloomLevel: string | null
+  bloomReasoning: string | null
+  quality: 'perfect' | 'good' | 'needs_improvement' | 'unmapped'
+  issues: string[]
+  improvedQuestionText: string | null
+  improvedExplanation: string | null
+  improvedTargetCloId: string | null
+  improvedTargetBloom: string | null
+}
+
+export interface AnalysisMappingData {
+  id: string
+  analysisQuestionId: string
+  cloId: string
+  cloCode: string
+  cloDescription: string
+  relevanceScore: number
+  reasoning: string
+  confidence: number
+}
+
+export interface AnalysisReportData {
+  id: string
+  documentId: string
+  analysisMethod: 'ai' | 'algorithmic'
+  totalQuestions: number
+  successfullyMapped: number
+  unmappedQuestions: number
+  perfectQuestions: number
+  goodQuestions: number
+  needsImprovement: number
+  overallSummary: string | null
+  recommendations: string[]
+  processingTimeMs: number | null
+  tokensUsed: number | null
+  generatedAt: string
+}
+
+/**
+ * Get analysis documents for a CLO set
+ */
+export async function getAnalysisDocuments(cloSetId: string): Promise<AnalysisDocumentData[]> {
+  const supabase = await createClient()
+
+  const { data: documents } = await supabase
+    .from('clo_analysis_documents')
+    .select('*')
+    .eq('clo_set_id', cloSetId)
+    .order('uploaded_at', { ascending: false })
+
+  if (!documents) return []
+
+  return documents.map(doc => ({
+    id: doc.id,
+    cloSetId: doc.clo_set_id,
+    fileName: doc.file_name,
+    fileUrl: doc.file_url,
+    fileSize: doc.file_size,
+    fileType: doc.file_type,
+    status: doc.status as 'pending' | 'parsing' | 'parsed' | 'analyzing' | 'completed' | 'failed',
+    errorMessage: doc.error_message,
+    totalQuestions: doc.total_questions || 0,
+    uploadedAt: doc.uploaded_at,
+    parsedAt: doc.parsed_at,
+    analyzedAt: doc.analyzed_at,
+  }))
+}
+
+/**
+ * Get a single analysis document by ID
+ */
+export async function getAnalysisDocument(documentId: string): Promise<AnalysisDocumentData | null> {
+  const supabase = await createClient()
+
+  const { data: doc } = await supabase
+    .from('clo_analysis_documents')
+    .select('*')
+    .eq('id', documentId)
+    .single()
+
+  if (!doc) return null
+
+  return {
+    id: doc.id,
+    cloSetId: doc.clo_set_id,
+    fileName: doc.file_name,
+    fileUrl: doc.file_url,
+    fileSize: doc.file_size,
+    fileType: doc.file_type,
+    status: doc.status as 'pending' | 'parsing' | 'parsed' | 'analyzing' | 'completed' | 'failed',
+    errorMessage: doc.error_message,
+    totalQuestions: doc.total_questions || 0,
+    uploadedAt: doc.uploaded_at,
+    parsedAt: doc.parsed_at,
+    analyzedAt: doc.analyzed_at,
+  }
+}
+
+/**
+ * Get analysis questions for a document
+ */
+export async function getAnalysisQuestions(documentId: string): Promise<AnalysisQuestionData[]> {
+  const supabase = await createClient()
+
+  const { data: questions } = await supabase
+    .from('clo_analysis_questions')
+    .select('*')
+    .eq('document_id', documentId)
+    .order('question_number', { ascending: true })
+
+  if (!questions) return []
+
+  return questions.map(q => ({
+    id: q.id,
+    documentId: q.document_id,
+    questionNumber: q.question_number,
+    questionText: q.question_text,
+    bloomLevel: q.bloom_level,
+    bloomReasoning: q.bloom_reasoning,
+    quality: q.quality as 'perfect' | 'good' | 'needs_improvement' | 'unmapped',
+    issues: (q.issues as string[]) || [],
+    improvedQuestionText: q.improved_question_text,
+    improvedExplanation: q.improved_explanation,
+    improvedTargetCloId: q.improved_target_clo_id,
+    improvedTargetBloom: q.improved_target_bloom,
+  }))
+}
+
+/**
+ * Get CLO mappings for analysis questions
+ */
+export async function getAnalysisMappings(questionIds: string[]): Promise<AnalysisMappingData[]> {
+  const supabase = await createClient()
+
+  if (questionIds.length === 0) return []
+
+  const { data: mappings } = await supabase
+    .from('clo_analysis_mappings')
+    .select(`
+      id,
+      analysis_question_id,
+      clo_id,
+      relevance_score,
+      reasoning,
+      confidence,
+      clos!inner(
+        code,
+        description
+      )
+    `)
+    .in('analysis_question_id', questionIds)
+    .order('relevance_score', { ascending: false })
+
+  if (!mappings) return []
+
+  return mappings.map(m => {
+    const clo = m.clos as unknown as { code: string; description: string }
+    return {
+      id: m.id,
+      analysisQuestionId: m.analysis_question_id,
+      cloId: m.clo_id,
+      cloCode: clo.code,
+      cloDescription: clo.description,
+      relevanceScore: parseFloat(m.relevance_score as any) || 0,
+      reasoning: m.reasoning,
+      confidence: parseFloat(m.confidence as any) || 0,
+    }
+  })
+}
+
+/**
+ * Get analysis report for a document
+ */
+export async function getAnalysisReport(documentId: string): Promise<AnalysisReportData | null> {
+  const supabase = await createClient()
+
+  const { data: report } = await supabase
+    .from('clo_analysis_reports')
+    .select('*')
+    .eq('document_id', documentId)
+    .single()
+
+  if (!report) return null
+
+  return {
+    id: report.id,
+    documentId: report.document_id,
+    analysisMethod: report.analysis_method as 'ai' | 'algorithmic',
+    totalQuestions: report.total_questions,
+    successfullyMapped: report.successfully_mapped || 0,
+    unmappedQuestions: report.unmapped_questions || 0,
+    perfectQuestions: report.perfect_questions || 0,
+    goodQuestions: report.good_questions || 0,
+    needsImprovement: report.needs_improvement || 0,
+    overallSummary: report.overall_summary,
+    recommendations: (report.recommendations as string[]) || [],
+    processingTimeMs: report.processing_time_ms,
+    tokensUsed: report.tokens_used,
+    generatedAt: report.generated_at,
+  }
+}
+
+/**
+ * Get full analysis results (document + questions + mappings + report)
+ */
+export async function getAnalysisResults(documentId: string) {
+  const [document, questions, report] = await Promise.all([
+    getAnalysisDocument(documentId),
+    getAnalysisQuestions(documentId),
+    getAnalysisReport(documentId),
+  ])
+
+  if (!document) return null
+
+  const questionIds = questions.map(q => q.id)
+  const mappings = questionIds.length > 0 ? await getAnalysisMappings(questionIds) : []
+
+  // Group mappings by question
+  const mappingsByQuestion = mappings.reduce((acc, mapping) => {
+    if (!acc[mapping.analysisQuestionId]) {
+      acc[mapping.analysisQuestionId] = []
+    }
+    acc[mapping.analysisQuestionId].push(mapping)
+    return acc
+  }, {} as Record<string, AnalysisMappingData[]>)
+
+  return {
+    document,
+    questions: questions.map(q => ({
+      ...q,
+      mappings: mappingsByQuestion[q.id] || [],
+    })),
+    report,
+  }
 }
 
 // ============================================================================
