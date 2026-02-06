@@ -29,75 +29,6 @@ import { Footer } from '@/components/layout/Footer'
 import { AboutModal } from '@/components/layout/AboutModal'
 import PricingSection from '@/components/layout/PricingSection'
 
-// Text Scramble Logic
-class TextScramble {
-  el: HTMLElement
-  chars: string
-  queue: { from: string; to: string; start: number; end: number; char?: string }[]
-  frame: number
-  frameRequest: number
-  resolve: (value?: unknown) => void
-
-  constructor(el: HTMLElement) {
-    this.el = el
-    this.chars = '!<>-_\\/[]{}—=+*^?#________'
-    this.update = this.update.bind(this)
-    this.queue = []
-    this.frame = 0
-    this.frameRequest = 0
-    this.resolve = () => { }
-  }
-
-  setText(newText: string) {
-    const oldText = this.el.innerText
-    const length = Math.max(oldText.length, newText.length)
-    const promise = new Promise((resolve) => this.resolve = resolve)
-    this.queue = []
-    for (let i = 0; i < length; i++) {
-      const from = oldText[i] || ''
-      const to = newText[i] || ''
-      const start = Math.floor(Math.random() * 40)
-      const end = start + Math.floor(Math.random() * 40)
-      this.queue.push({ from, to, start, end })
-    }
-    cancelAnimationFrame(this.frameRequest)
-    this.frame = 0
-    this.update()
-    return promise
-  }
-
-  update() {
-    let output = ''
-    let complete = 0
-    for (let i = 0, n = this.queue.length; i < n; i++) {
-      let { from, to, start, end, char } = this.queue[i]
-      if (this.frame >= end) {
-        complete++
-        output += to
-      } else if (this.frame >= start) {
-        if (!char || Math.random() < 0.28) {
-          char = this.randomChar()
-          this.queue[i].char = char
-        }
-        output += `<span className="text-slate-400 opacity-50">${char}</span>`
-      } else {
-        output += from
-      }
-    }
-    this.el.innerHTML = output
-    if (complete === this.queue.length) {
-      this.resolve()
-    } else {
-      this.frameRequest = requestAnimationFrame(this.update)
-      this.frame++
-    }
-  }
-
-  randomChar() {
-    return this.chars[Math.floor(Math.random() * this.chars.length)]
-  }
-}
-
 export default function Home() {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
 
@@ -154,34 +85,6 @@ export default function Home() {
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el))
     return () => observer.disconnect()
-  }, [])
-
-  // Hero Scramble Effect
-  useEffect(() => {
-    const el = document.getElementById('scramble-text')
-    if (el) {
-      const fx = new TextScramble(el)
-      const phrases = [
-        'Class Response System',
-        'Capture Every Thought',
-        'Measure Every Moment'
-      ]
-      let counter = 0
-      let isSubscribed = true
-
-      const next = () => {
-        if (!isSubscribed) return
-        fx.setText(phrases[counter]).then(() => {
-          if (isSubscribed) {
-            setTimeout(next, 3000)
-          }
-        })
-        counter = (counter + 1) % phrases.length
-      }
-
-      next()
-      return () => { isSubscribed = false }
-    }
   }, [])
 
   return (
@@ -273,6 +176,10 @@ export default function Home() {
         .font-display {
           font-family: var(--font-space-grotesk), sans-serif;
         }
+
+        .font-primary {
+          font-family: var(--font-geist-sans), sans-serif;
+        }
       `}</style>
 
       <Navbar onAboutClick={() => setIsAboutModalOpen(true)} />
@@ -290,7 +197,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight mb-6 reveal" style={{ transitionDelay: '100ms' }}>
-            <span id="scramble-text" className="text-slate-900">Class Response System</span>
+            <span className="text-slate-900 font-primary">Class Response System</span>
             <br />
             <span className="gradient-text font-bold text-4xl md:text-6xl">Powered by AI</span>
           </h1>

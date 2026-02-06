@@ -474,7 +474,7 @@ export async function getBaseTemplateStats() {
 }
 
 // ============================================================================
-// SEMESTERS QUERIES
+// SEMESTERS QUERIES & MUTATIONS
 // ============================================================================
 
 export interface SemesterData {
@@ -482,6 +482,7 @@ export interface SemesterData {
   name: string
   start_date: string
   end_date: string
+  description?: string | null
   status: 'current' | 'upcoming' | 'completed'
   courses: number
   students: number
@@ -489,8 +490,96 @@ export interface SemesterData {
   progress: number
 }
 
+export interface CreateSemesterInput {
+  name: string
+  startDate: string
+  endDate: string
+  description?: string
+  status: 'current' | 'upcoming'
+}
+
+export interface UpdateSemesterInput {
+  id: string
+  name?: string
+  startDate?: string
+  endDate?: string
+  description?: string
+  status?: 'current' | 'upcoming' | 'completed'
+}
+
 /**
- * Get all semesters for a teacher
+ * Get paginated semesters for a teacher (OPTIMIZED with view)
+ */
+export async function getTeacherSemestersPaginated({
+  userId,
+  page = 1,
+  pageSize = 12,
+  search = '',
+  status = 'all',
+}: {
+  userId: string
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+}): Promise<PaginatedResult<SemesterData>> {
+  const supabase = await createClient()
+
+  const offset = (page - 1) * pageSize
+
+  // Build query using optimized view
+  let query = supabase
+    .from('semester_stats')
+    .select('*', { count: 'exact' })
+    .eq('user_id', userId)
+
+  // Apply status filter
+  if (status !== 'all') {
+    query = query.eq('status', status)
+  }
+
+  // Apply search filter
+  if (search) {
+    query = query.ilike('name', `%${search}%`)
+  }
+
+  // Apply sorting and pagination
+  query = query
+    .order('start_date', { ascending: false })
+    .range(offset, offset + pageSize - 1)
+
+  const { data, error, count } = await query
+
+  if (error) {
+    console.error('Error fetching semesters:', error)
+    return { data: [], count: 0, page, pageSize, totalPages: 0 }
+  }
+
+  // Transform data
+  const semesters: SemesterData[] = (data || []).map(semester => ({
+    id: semester.id,
+    name: semester.name,
+    start_date: semester.start_date,
+    end_date: semester.end_date,
+    description: semester.description,
+    status: semester.status as 'current' | 'upcoming' | 'completed',
+    courses: semester.courses_count || 0,
+    students: semester.students_count || 0,
+    sessions: semester.sessions_count || 0,
+    progress: semester.progress || 0,
+  }))
+
+  return {
+    data: semesters,
+    count: count || 0,
+    page,
+    pageSize,
+    totalPages: Math.ceil((count || 0) / pageSize),
+  }
+}
+
+/**
+ * Get all semesters for a teacher (DEPRECATED - use getTeacherSemestersPaginated)
  */
 export async function getTeacherSemesters(userId: string): Promise<SemesterData[]> {
   const supabase = await createClient()
@@ -558,6 +647,7 @@ export async function getTeacherSemesters(userId: string): Promise<SemesterData[
         name: semester.name,
         start_date: semester.start_date,
         end_date: semester.end_date,
+        description: semester.description,
         status: semester.status,
         courses: coursesCount || 0,
         students: studentsCount,
@@ -568,6 +658,82 @@ export async function getTeacherSemesters(userId: string): Promise<SemesterData[
   )
 
   return semestersWithStats
+}
+
+/**
+ * Create a new semester
+ */
+export async function createSemester(userId: string, input: CreateSemesterInput) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('semesters')
+    .insert({
+      user_id: userId,
+      name: input.name,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      description: input.description || null,
+      status: input.status,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating semester:', error)
+    throw new Error(`Failed to create semester: ${error.message}`)
+  }
+
+  return data
+}
+
+/**
+ * Update a semester
+ */
+export async function updateSemester(userId: string, input: UpdateSemesterInput) {
+  const supabase = await createClient()
+
+  const updateData: Record<string, unknown> = {}
+  if (input.name !== undefined) updateData.name = input.name
+  if (input.startDate !== undefined) updateData.start_date = input.startDate
+  if (input.endDate !== undefined) updateData.end_date = input.endDate
+  if (input.description !== undefined) updateData.description = input.description
+  if (input.status !== undefined) updateData.status = input.status
+
+  const { data, error } = await supabase
+    .from('semesters')
+    .update(updateData)
+    .eq('id', input.id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating semester:', error)
+    throw new Error('Failed to update semester')
+  }
+
+  return data
+}
+
+/**
+ * Delete a semester
+ */
+export async function deleteSemester(userId: string, semesterId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('semesters')
+    .delete()
+    .eq('id', semesterId)
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('Error deleting semester:', error)
+    throw new Error('Failed to delete semester')
+  }
+
+  return true
 }
 
 // ============================================================================

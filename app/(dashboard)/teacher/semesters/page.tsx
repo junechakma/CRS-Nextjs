@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { getTeacherSemesters } from "@/lib/supabase/queries/teacher"
+import { getTeacherSemestersPaginated } from "@/lib/supabase/queries/teacher"
 import SemestersClient from "./semesters-client"
-import { CalendarDays, Calendar, Clock, TrendingUp, BookOpen } from "lucide-react"
+import { CalendarDays, Calendar, Clock, TrendingUp, BookOpen, } from "lucide-react"
 
 function SemestersSkeleton() {
   return (
@@ -85,9 +85,16 @@ async function SemestersContent() {
     redirect('/super-admin')
   }
 
-  const semesters = await getTeacherSemesters(user.id)
+  // Fetch first page of semesters (12 items)
+  const result = await getTeacherSemestersPaginated({
+    userId: user.id,
+    page: 1,
+    pageSize: 12,
+    search: '',
+    status: 'all',
+  })
 
-  return <SemestersClient semesters={semesters} />
+  return <SemestersClient semesters={result.data} />
 }
 
 export default function SemestersPage() {

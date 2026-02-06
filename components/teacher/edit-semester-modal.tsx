@@ -18,19 +18,19 @@ interface EditSemesterModalProps {
   onClose: () => void
   onSubmit?: (data: SemesterFormData) => void
   semester: {
-    id: number
+    id: string
     name: string
-    startDate: string
-    endDate: string
+    start_date: string
+    end_date: string
     status: string
   } | null
 }
 
 interface SemesterFormData {
-  id: number
   name: string
   startDate: string
   endDate: string
+  description: string
   status: "upcoming" | "current" | "completed"
 }
 
@@ -46,10 +46,10 @@ const parseDisplayDate = (displayDate: string): string => {
 
 export function EditSemesterModal({ isOpen, onClose, onSubmit, semester }: EditSemesterModalProps) {
   const [formData, setFormData] = useState<SemesterFormData>({
-    id: 0,
     name: "",
     startDate: "",
     endDate: "",
+    description: "",
     status: "upcoming",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -59,10 +59,10 @@ export function EditSemesterModal({ isOpen, onClose, onSubmit, semester }: EditS
   useEffect(() => {
     if (semester) {
       setFormData({
-        id: semester.id,
         name: semester.name,
-        startDate: parseDisplayDate(semester.startDate),
-        endDate: parseDisplayDate(semester.endDate),
+        startDate: parseDisplayDate(semester.start_date),
+        endDate: parseDisplayDate(semester.end_date),
+        description: (semester as any).description || "",
         status: semester.status as "upcoming" | "current" | "completed",
       })
       setErrors({})
@@ -265,6 +265,27 @@ export function EditSemesterModal({ isOpen, onClose, onSubmit, semester }: EditS
                   <CheckCircle2 className="w-4 h-4" />
                   <span className="font-medium text-xs">Completed</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <FileText className="w-4 h-4 inline mr-1.5 text-slate-400" />
+                Description <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Add any notes or description for this semester..."
+                  rows={3}
+                  maxLength={250}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm resize-none"
+                />
+                <div className="absolute bottom-2 right-3 text-xs text-slate-400">
+                  {formData.description.length}/250
+                </div>
               </div>
             </div>
 

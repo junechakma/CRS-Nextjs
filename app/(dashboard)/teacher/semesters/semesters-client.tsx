@@ -1,10 +1,17 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { AddSemesterModal } from "@/components/teacher/add-semester-modal"
 import { EditSemesterModal } from "@/components/teacher/edit-semester-modal"
 import { SemesterData } from "@/lib/supabase/queries/teacher"
+import {
+  createSemesterAction,
+  updateSemesterAction,
+  deleteSemesterAction,
+  getSemestersPaginatedAction,
+} from "@/lib/actions/semesters"
 import {
   CalendarDays,
   Plus,
@@ -23,7 +30,10 @@ import {
   Play,
   Pause,
   Archive,
+  Loader2,
+  ChevronRight,
 } from "lucide-react"
+import { toast } from "sonner"
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; color: string; bg: string }> = {
   current: {
@@ -51,6 +61,7 @@ interface SemestersClientProps {
 }
 
 export default function SemestersClient({ semesters: initialSemesters }: SemestersClientProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -58,7 +69,14 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
   const [editingSemester, setEditingSemester] = useState<SemesterData | null>(null)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [semesters, setSemesters] = useState(initialSemesters)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalCount, setTotalCount] = useState(initialSemesters.length)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,31 +88,132 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const filteredSemesters = semesters.filter((semester) => {
-    const matchesSearch = semester.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesFilter = filterStatus === "all" || semester.status === filterStatus
-    return matchesSearch && matchesFilter
-  })
+  // Debounced search and filter - refetch from server
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
 
+    searchTimeoutRef.current = setTimeout(() => {
+      // Reset and fetch from server
+      setPage(1)
+      fetchSemesters(1, searchQuery, filterStatus, true)
+    }, 500)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery, filterStatus])
+
+  // Fetch semesters from server
+  const fetchSemesters = async (
+    pageNum: number,
+    search: string,
+    status: string,
+    reset: boolean = false
+  ) => {
+    setIsLoadingMore(true)
+
+    try {
+      const result = await getSemestersPaginatedAction({
+        page: pageNum,
+        pageSize: 12,
+        search,
+        status,
+      })
+
+      if (result.success) {
+        if (reset) {
+          setSemesters(result.data)
+        } else {
+          setSemesters(prev => [...prev, ...result.data])
+        }
+        setTotalCount(result.count || 0)
+        setHasMore(pageNum < (result.totalPages || 0))
+      }
+    } catch (error) {
+      console.error("Error fetching semesters:", error)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
+
+  // Load more function
+  const loadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      const nextPage = page + 1
+      setPage(nextPage)
+      fetchSemesters(nextPage, searchQuery, filterStatus, false)
+    }
+  }
+
+  // Calculate stats from all loaded semesters (not filtered)
   const stats = {
-    total: semesters.length,
+    total: filterStatus === "all" ? totalCount : semesters.length,
     current: semesters.filter((s) => s.status === "current").length,
     upcoming: semesters.filter((s) => s.status === "upcoming").length,
     totalCourses: semesters.reduce((acc, s) => acc + s.courses, 0),
   }
 
-  const handleStatusChange = (semesterId: string, newStatus: string) => {
-    setSemesters(prev =>
-      prev.map(sem =>
-        sem.id === semesterId ? { ...sem, status: newStatus as 'current' | 'upcoming' | 'completed' } : sem
-      )
-    )
+  const handleStatusChange = async (semesterId: string, newStatus: string) => {
+    setIsSubmitting(true)
     setOpenDropdown(null)
+
+    try {
+      const result = await updateSemesterAction({
+        id: semesterId,
+        status: newStatus as 'current' | 'upcoming' | 'completed',
+      })
+
+      if (result.success) {
+        // Optimistically update the local state
+        setSemesters(prev =>
+          prev.map(sem =>
+            sem.id === semesterId
+              ? { ...sem, status: newStatus as 'current' | 'upcoming' | 'completed' }
+              : sem
+          )
+        )
+
+        toast.success("Semester status updated successfully")
+        router.refresh()
+      } else {
+        toast.error(result.error || "Failed to update semester status")
+      }
+    } catch (error) {
+      toast.error("An error occurred while updating the semester")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleDelete = (semesterId: string) => {
-    setSemesters(prev => prev.filter(sem => sem.id !== semesterId))
+  const handleDelete = async (semesterId: string) => {
+    if (!confirm("Are you sure you want to delete this semester? This action cannot be undone.")) {
+      return
+    }
+
+    setIsSubmitting(true)
     setOpenDropdown(null)
+
+    try {
+      const result = await deleteSemesterAction(semesterId)
+
+      if (result.success) {
+        toast.success("Semester deleted successfully")
+        setSemesters(prev => prev.filter(sem => sem.id !== semesterId))
+        router.refresh()
+      } else {
+        toast.error(result.error || "Failed to delete semester")
+      }
+    } catch (error) {
+      toast.error("An error occurred while deleting the semester")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleEdit = (semesterId: string) => {
@@ -104,6 +223,88 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
       setIsEditModalOpen(true)
     }
     setOpenDropdown(null)
+  }
+
+  const handleCreateSemester = async (data: {
+    name: string
+    startDate: string
+    endDate: string
+    description: string
+    status: 'current' | 'upcoming'
+  }) => {
+    setIsSubmitting(true)
+
+    try {
+      const result = await createSemesterAction(data)
+
+      if (result.success && result.data) {
+        toast.success("Semester created successfully")
+        setIsAddModalOpen(false)
+
+        // Refetch first page to show new semester
+        setPage(1)
+        await fetchSemesters(1, searchQuery, filterStatus, true)
+      } else {
+        toast.error(result.error || "Failed to create semester")
+      }
+    } catch (error) {
+      toast.error("An error occurred while creating the semester")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEditSemester = async (data: {
+    name: string
+    startDate: string
+    endDate: string
+    description: string
+    status: 'current' | 'upcoming' | 'completed'
+  }) => {
+    if (!editingSemester) return
+
+    setIsSubmitting(true)
+
+    try {
+      const result = await updateSemesterAction({
+        id: editingSemester.id,
+        name: data.name,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        description: data.description,
+        status: data.status,
+      })
+
+      if (result.success) {
+        // Optimistically update the local state
+        setSemesters(prev =>
+          prev.map(sem =>
+            sem.id === editingSemester.id
+              ? {
+                ...sem,
+                name: data.name,
+                start_date: data.startDate,
+                end_date: data.endDate,
+                description: data.description,
+                status: data.status,
+              }
+              : sem
+          )
+        )
+
+        toast.success("Semester updated successfully")
+        setIsEditModalOpen(false)
+        setEditingSemester(null)
+      } else {
+        toast.error(result.error || "Failed to update semester")
+      }
+    } catch (error) {
+      toast.error("An error occurred while updating the semester")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const formatDate = (dateStr: string) => {
@@ -190,11 +391,10 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all capitalize ${
-                    filterStatus === status
+                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all capitalize ${filterStatus === status
                       ? "bg-indigo-100 text-indigo-700"
                       : "text-slate-600 hover:bg-slate-100"
-                  }`}
+                    }`}
                 >
                   {status === "all" ? "All Semesters" : status}
                 </button>
@@ -217,7 +417,7 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSemesters.map((semester) => {
+          {semesters.map((semester) => {
             const status = statusConfig[semester.status]
             const StatusIcon = status.icon
             return (
@@ -307,6 +507,11 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
                     <h3 className="font-semibold text-lg text-slate-900 group-hover:text-indigo-600 transition-colors">
                       {semester.name}
                     </h3>
+                    {(semester as any).description && (
+                      <p className="text-sm text-slate-500 mt-1.5 line-clamp-2">
+                        {(semester as any).description}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-slate-500 mb-4 bg-slate-50 px-3 py-2 rounded-lg">
@@ -363,14 +568,42 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
             </p>
           </div>
         </div>
+
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="flex justify-center mt-8">
+            <Button
+              onClick={loadMore}
+              disabled={isLoadingMore}
+              className="px-8 py-3 bg-white border-2 border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 rounded-xl font-medium transition-all"
+            >
+              {isLoadingMore ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Load More Semesters
+                  <ChevronRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Results Info */}
+        {semesters.length > 0 && (
+          <div className="text-center mt-6 text-sm text-slate-500">
+            Showing {semesters.length} of {totalCount} semesters
+          </div>
+        )}
       </div>
 
       <AddSemesterModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSubmit={(data) => {
-          console.log("New semester:", data)
-        }}
+        onSubmit={handleCreateSemester}
       />
 
       <EditSemesterModal
@@ -380,9 +613,7 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
           setEditingSemester(null)
         }}
         semester={editingSemester}
-        onSubmit={(data) => {
-          console.log("Edit semester:", data)
-        }}
+        onSubmit={handleEditSemester}
       />
     </>
   )

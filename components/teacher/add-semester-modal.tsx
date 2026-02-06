@@ -238,13 +238,19 @@ export function AddSemesterModal({ isOpen, onClose, onSubmit }: AddSemesterModal
                 <FileText className="w-4 h-4 inline mr-1.5 text-slate-400" />
                 Description <span className="text-slate-400 font-normal">(Optional)</span>
               </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Add any notes or description for this semester..."
-                rows={3}
-                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm resize-none"
-              />
+              <div className="relative">
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Add any notes or description for this semester..."
+                  rows={3}
+                  maxLength={250}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-sm resize-none"
+                />
+                <div className="absolute bottom-2 right-3 text-xs text-slate-400">
+                  {formData.description.length}/250
+                </div>
+              </div>
             </div>
 
             {/* Actions */}
