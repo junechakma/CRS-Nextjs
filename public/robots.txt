@@ -1,0 +1,18 @@
+# *
+User-agent: *
+Allow: /
+
+# Disallow private/authenticated routes
+Disallow: /teacher/
+Disallow: /super-admin/
+Disallow: /auth/
+Disallow: /api/
+
+# Allow public demo pages
+Allow: /demo
+Allow: /session-analytics-demo
+Allow: /clo-demo
+Allow: /feedback
+
+# Sitemap
+Sitemap: https://classresponsesystem.com/sitemap.xml

@@ -25,4 +25,4 @@ Disallow: /forgot-password*
 Disallow: /auth/*
 
 # Sitemap location
-Sitemap: https://crsfeedback.com/sitemap.xml
+Sitemap: https://classresponse.com/sitemap.xml

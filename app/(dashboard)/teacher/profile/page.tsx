@@ -18,9 +18,7 @@ import {
   X,
   CheckCircle2,
   BookOpen,
-  Users,
   MessageSquare,
-  Award,
   Star,
   Eye,
   EyeOff,
@@ -28,47 +26,9 @@ import {
   AlertCircle,
 } from "lucide-react"
 
-const stats = [
-  { label: "Courses", value: "8", icon: BookOpen },
-  { label: "Students", value: "459", icon: Users },
-  { label: "Sessions", value: "47", icon: MessageSquare },
-  { label: "Avg Rating", value: "4.7", icon: Star },
-]
-
-const achievements = [
-  {
-    title: "Feedback Champion",
-    description: "Collected over 1,000 student responses",
-    icon: Award,
-    color: "amber",
-    earned: true,
-  },
-  {
-    title: "Consistent Educator",
-    description: "Maintained 4.5+ rating for 3 months",
-    icon: Star,
-    color: "emerald",
-    earned: true,
-  },
-  {
-    title: "Early Adopter",
-    description: "Among the first 100 teachers on ClassResponse",
-    icon: Star,
-    color: "violet",
-    earned: true,
-  },
-  {
-    title: "Community Builder",
-    description: "Shared 10+ questions to common bank",
-    icon: Users,
-    color: "blue",
-    earned: false,
-  },
-]
-
 export default function ProfilePage() {
   const supabase = createClient()
-  const { profile, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
 
   const [isEditing, setIsEditing] = useState(false)
   const [formName, setFormName] = useState("")
@@ -96,6 +56,14 @@ export default function ProfilePage() {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
+  // Profile stats from database
+  const [profileStats, setProfileStats] = useState<{
+    activeCourses: number
+    totalSessions: number
+    totalResponses: number
+    avgRating: number
+  } | null>(null)
+
   // Sync form with profile
   useEffect(() => {
     if (profile) {
@@ -104,6 +72,28 @@ export default function ProfilePage() {
       setFormDepartment(profile.department || "")
     }
   }, [profile])
+
+  // Fetch real stats from database
+  useEffect(() => {
+    async function fetchStats() {
+      if (!user?.id) return
+      const { data } = await supabase
+        .from('teacher_dashboard_stats')
+        .select('active_courses, total_sessions, total_responses, avg_rating')
+        .eq('user_id', user.id)
+        .single()
+
+      if (data) {
+        setProfileStats({
+          activeCourses: data.active_courses || 0,
+          totalSessions: data.total_sessions || 0,
+          totalResponses: data.total_responses || 0,
+          avgRating: parseFloat(data.avg_rating) || 0,
+        })
+      }
+    }
+    fetchStats()
+  }, [user?.id, supabase])
 
   const handleSave = async () => {
     if (!profile?.id) return
@@ -275,7 +265,12 @@ export default function ProfilePage() {
 
           {/* Quick Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
-            {stats.map((stat, index) => (
+            {[
+              { label: "Courses", value: profileStats?.activeCourses ?? "—", icon: BookOpen },
+              { label: "Sessions", value: profileStats?.totalSessions ?? "—", icon: MessageSquare },
+              { label: "Responses", value: profileStats?.totalResponses?.toLocaleString() ?? "—", icon: MessageSquare },
+              { label: "Avg Rating", value: profileStats ? profileStats.avgRating.toFixed(1) : "—", icon: Star },
+            ].map((stat, index) => (
               <div
                 key={index}
                 className="bg-white/70 backdrop-blur rounded-xl p-4 border border-white/50"
@@ -320,11 +315,10 @@ export default function ProfilePage() {
             </div>
 
             {profileMessage && (
-              <div className={`mb-4 flex items-center gap-2 p-3 rounded-xl text-sm ${
-                profileMessage.type === "success"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-red-50 text-red-700 border border-red-200"
-              }`}>
+              <div className={`mb-4 flex items-center gap-2 p-3 rounded-xl text-sm ${profileMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-red-50 text-red-700 border border-red-200"
+                }`}>
                 {profileMessage.type === "success" ? (
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                 ) : (
@@ -406,67 +400,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Right Column - Achievements & Security */}
+        {/* Right Column - Security */}
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-sm">
-            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-600" />
-              Achievements
-            </h3>
-
-            <div className="space-y-3">
-              {achievements.map((achievement, index) => {
-                const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-                  amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200" },
-                  emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
-                  violet: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-200" },
-                  blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
-                }
-                const colors = colorMap[achievement.color]
-
-                return (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-xl border transition-all ${
-                      achievement.earned
-                        ? `${colors.bg} ${colors.border}`
-                        : "bg-slate-50 border-slate-200 opacity-50"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          achievement.earned ? colors.bg : "bg-slate-100"
-                        }`}
-                      >
-                        <achievement.icon
-                          className={`w-5 h-5 ${
-                            achievement.earned ? colors.text : "text-slate-400"
-                          }`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4
-                          className={`font-medium text-sm ${
-                            achievement.earned ? "text-slate-900" : "text-slate-500"
-                          }`}
-                        >
-                          {achievement.title}
-                        </h4>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {achievement.description}
-                        </p>
-                      </div>
-                      {achievement.earned && (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
           {/* Security */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-sm">
             <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -497,244 +432,246 @@ export default function ProfilePage() {
       </div>
 
       {/* Email Change Modal */}
-      {showEmailModal && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setShowEmailModal(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {
+        showEmailModal && (
+          <>
             <div
-              className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-blue-600" />
-                  Change Email
-                </h3>
-                <button
-                  onClick={() => setShowEmailModal(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-sm text-slate-500 mb-6">
-                A confirmation link will be sent to your new email address.
-              </p>
-
-              <form onSubmit={handleEmailChange} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Current Email
-                  </label>
-                  <p className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500">
-                    {profile?.email || 'Not set'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    New Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="Enter new email address"
-                    required
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-
-                {emailMessage && (
-                  <div
-                    className={`flex items-center gap-2 p-3 rounded-xl text-sm ${
-                      emailMessage.type === "success"
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-red-50 text-red-700 border border-red-200"
-                    }`}
+              className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setShowEmailModal(false)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-blue-600" />
+                    Change Email
+                  </h3>
+                  <button
+                    onClick={() => setShowEmailModal(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
                   >
-                    {emailMessage.type === "success" ? (
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                    )}
-                    {emailMessage.text}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={emailLoading || !newEmail}
-                  className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
-                >
-                  {emailLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Mail className="w-4 h-4" />
-                  )}
-                  {emailLoading ? "Sending..." : "Update Email"}
-                </Button>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Password Change Modal */}
-      {showPasswordModal && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setShowPasswordModal(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Key className="w-5 h-5 text-emerald-600" />
-                  Change Password
-                </h3>
-                <button
-                  onClick={() => setShowPasswordModal(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-sm text-slate-500 mb-6">
-                Choose a new secure password for your account.
-              </p>
-
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Current Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showCurrentPassword ? "text" : "password"}
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Enter current password"
-                      required
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showCurrentPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showNewPassword ? "text" : "password"}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new password"
-                      required
-                      minLength={8}
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showNewPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Confirm New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      required
-                      minLength={8}
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-500">
-                  Password must be at least 8 characters long.
+                <p className="text-sm text-slate-500 mb-6">
+                  A confirmation link will be sent to your new email address.
                 </p>
 
-                {passwordMessage && (
-                  <div
-                    className={`flex items-center gap-2 p-3 rounded-xl text-sm ${
-                      passwordMessage.type === "success"
+                <form onSubmit={handleEmailChange} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Current Email
+                    </label>
+                    <p className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500">
+                      {profile?.email || 'Not set'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      New Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="Enter new email address"
+                      required
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    />
+                  </div>
+
+                  {emailMessage && (
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-xl text-sm ${emailMessage.type === "success"
                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         : "bg-red-50 text-red-700 border border-red-200"
-                    }`}
-                  >
-                    {passwordMessage.type === "success" ? (
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                    )}
-                    {passwordMessage.text}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={passwordLoading || !currentPassword || !newPassword || !confirmPassword}
-                  className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {passwordLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Key className="w-4 h-4" />
+                        }`}
+                    >
+                      {emailMessage.type === "success" ? (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                      )}
+                      {emailMessage.text}
+                    </div>
                   )}
-                  {passwordLoading ? "Updating..." : "Update Password"}
-                </Button>
-              </form>
+
+                  <Button
+                    type="submit"
+                    disabled={emailLoading || !newEmail}
+                    className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    {emailLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Mail className="w-4 h-4" />
+                    )}
+                    {emailLoading ? "Sending..." : "Update Email"}
+                  </Button>
+                </form>
+              </div>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )
+      }
+
+      {/* Password Change Modal */}
+      {
+        showPasswordModal && (
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setShowPasswordModal(false)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <Key className="w-5 h-5 text-emerald-600" />
+                    Change Password
+                  </h3>
+                  <button
+                    onClick={() => setShowPasswordModal(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <p className="text-sm text-slate-500 mb-6">
+                  Choose a new secure password for your account.
+                </p>
+
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        required
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showCurrentPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        required
+                        minLength={8}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showNewPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        required
+                        minLength={8}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Password must be at least 8 characters long.
+                  </p>
+
+                  {passwordMessage && (
+                    <div
+                      className={`flex items-center gap-2 p-3 rounded-xl text-sm ${passwordMessage.type === "success"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                        }`}
+                    >
+                      {passwordMessage.type === "success" ? (
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                      )}
+                      {passwordMessage.text}
+                    </div>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={passwordLoading || !currentPassword || !newPassword || !confirmPassword}
+                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {passwordLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Key className="w-4 h-4" />
+                    )}
+                    {passwordLoading ? "Updating..." : "Update Password"}
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </>
+        )
+      }
+    </div >
   )
 }
