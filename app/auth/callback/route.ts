@@ -20,6 +20,10 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/reset-password`)
       }
 
+      if (type === 'email_change') {
+        return NextResponse.redirect(`${origin}/teacher/profile?message=Email updated successfully!`)
+      }
+
       // Email confirmation - redirect to login with success message
       return NextResponse.redirect(`${origin}/login?message=Email verified successfully! Please sign in.`)
     }
@@ -29,12 +33,15 @@ export async function GET(request: Request) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
       token_hash,
-      type: type as 'signup' | 'recovery' | 'email',
+      type: type as 'signup' | 'recovery' | 'email' | 'email_change',
     })
 
     if (!error) {
       if (type === 'recovery') {
         return NextResponse.redirect(`${origin}/reset-password`)
+      }
+      if (type === 'email_change') {
+        return NextResponse.redirect(`${origin}/teacher/profile?message=Email updated successfully!`)
       }
       return NextResponse.redirect(`${origin}/login?message=Email verified successfully! Please sign in.`)
     }

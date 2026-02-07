@@ -84,7 +84,7 @@ export default function QuestionsPageClient({
   const [totalCount, setTotalCount] = useState(initialTotalCount)
   const [isLoading, setIsLoading] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Close dropdown when clicking outside
   useEffect(() => {

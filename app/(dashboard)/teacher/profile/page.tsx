@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
@@ -29,6 +30,16 @@ import {
 export default function ProfilePage() {
   const supabase = createClient()
   const { user, profile, refreshProfile } = useAuth()
+
+  // Show toast from redirect (e.g., after email change verification)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const message = params.get("message")
+    if (message) {
+      toast.success(message)
+      window.history.replaceState({}, "", "/teacher/profile")
+    }
+  }, [])
 
   const [isEditing, setIsEditing] = useState(false)
   const [formName, setFormName] = useState("")
@@ -130,7 +141,10 @@ export default function ProfilePage() {
     setEmailMessage(null)
 
     try {
-      const { error } = await supabase.auth.updateUser({ email: newEmail })
+      const { error } = await supabase.auth.updateUser(
+        { email: newEmail },
+        { emailRedirectTo: `${window.location.origin}/auth/callback?type=email_change` }
+      )
       if (error) throw error
 
       setEmailMessage({

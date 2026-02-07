@@ -65,7 +65,7 @@ export default function CoursesClient({ courses: initialCourses, semesters }: Co
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

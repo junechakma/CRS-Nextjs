@@ -17,16 +17,9 @@ interface UsersContentWrapperProps {
 }
 
 export function UsersContentWrapper(props: UsersContentWrapperProps) {
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-
     return (
         <>
-            {/* Pass the modal state handler to the client component */}
-            <UsersPageClient
-                {...props}
-                externalAddModalOpen={isAddModalOpen}
-                onSetAddModalOpen={setIsAddModalOpen}
-            />
+            <UsersPageClient {...props} />
         </>
     )
 }

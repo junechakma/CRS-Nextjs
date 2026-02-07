@@ -95,7 +95,7 @@ export function EditCourseModal({ isOpen, onClose, onSubmit, semesters, course }
 
     if (!formData.name.trim()) newErrors.name = "Course name is required"
     if (!formData.code.trim()) newErrors.code = "Course code is required"
-    if (!formData.semester) newErrors.semester = "Please select a semester"
+    if (!formData.semesterId) newErrors.semesterId = "Please select a semester"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -208,10 +208,10 @@ export function EditCourseModal({ isOpen, onClose, onSubmit, semesters, course }
                   Semester
                 </label>
                 <select
-                  value={formData.semester}
-                  onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                  value={formData.semesterId}
+                  onChange={(e) => setFormData({ ...formData, semesterId: e.target.value })}
                   className={`w-full px-4 py-3 rounded-xl border-2 transition-all outline-none text-sm bg-white ${
-                    errors.semester
+                    errors.semesterId
                       ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                       : "border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
                   }`}
@@ -222,10 +222,10 @@ export function EditCourseModal({ isOpen, onClose, onSubmit, semesters, course }
                     </option>
                   ))}
                 </select>
-                {errors.semester && (
+                {errors.semesterId && (
                   <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
-                    {errors.semester}
+                    {errors.semesterId}
                   </p>
                 )}
               </div>

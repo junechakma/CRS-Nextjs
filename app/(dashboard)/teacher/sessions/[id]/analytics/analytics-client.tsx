@@ -458,7 +458,7 @@ export default function AnalyticsClient({ analytics }: AnalyticsClientProps) {
               {isExpanded && stats && (
                 <div className="border-t border-slate-100 p-5 bg-slate-50/50">
                   {/* Rating Distribution */}
-                  {question.type === "rating" && "distribution" in stats && (
+                  {question.type === "rating" && "distribution" in stats && stats.distribution && (
                     <div className="space-y-3">
                       <p className="text-sm font-medium text-slate-700 mb-4">Rating Distribution</p>
                       {stats.distribution.map((item) => (
@@ -506,7 +506,7 @@ export default function AnalyticsClient({ analytics }: AnalyticsClientProps) {
                   )}
 
                   {/* Multiple Choice Distribution */}
-                  {question.type === "multiple" && "options" in stats && (
+                  {question.type === "multiple" && "options" in stats && stats.options && (
                     <div className="space-y-3">
                       <p className="text-sm font-medium text-slate-700 mb-4">Response Distribution</p>
                       {stats.options.map((option, idx) => (
@@ -531,7 +531,7 @@ export default function AnalyticsClient({ analytics }: AnalyticsClientProps) {
                   )}
 
                   {/* Text Responses */}
-                  {question.type === "text" && "textResponses" in stats && (
+                  {question.type === "text" && "textResponses" in stats && stats.textResponses && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-sm font-medium text-slate-700">

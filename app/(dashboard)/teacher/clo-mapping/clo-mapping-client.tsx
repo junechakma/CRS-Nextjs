@@ -57,7 +57,7 @@ export default function CLOMappingClient({ cloSets: initialCLOSets, courses }: C
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [cloSetToDelete, setCloSetToDelete] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const [formName, setFormName] = useState("")
   const [formCourse, setFormCourse] = useState("")
@@ -109,7 +109,7 @@ export default function CLOMappingClient({ cloSets: initialCLOSets, courses }: C
         courseId,
       })
 
-      if (result.success) {
+      if (result.success && result.data) {
         if (reset) {
           setCloSets(result.data)
         } else {

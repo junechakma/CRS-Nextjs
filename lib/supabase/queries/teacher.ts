@@ -855,6 +855,7 @@ export async function getTeacherCourses(userId: string): Promise<CourseData[]> {
       id,
       name,
       code,
+      description,
       color,
       status,
       expected_students,
@@ -901,7 +902,7 @@ export async function getTeacherCourses(userId: string): Promise<CourseData[]> {
         sessions: sessionsCount || 0,
         avg_rating: Math.round(avgRating * 10) / 10,
         last_activity: course.last_activity_at,
-        status: course.status === 'active' ? 'active' : 'archived',
+        status: (course.status === 'active' ? 'active' : 'archived') as 'active' | 'archived',
         color: course.color || 'indigo',
       }
     })

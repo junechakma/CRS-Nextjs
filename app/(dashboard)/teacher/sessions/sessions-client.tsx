@@ -60,7 +60,7 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
   const [deleteSession, setDeleteSession] = useState<SessionData | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const isMounted = useRef(false)
 
   // Pagination state
@@ -202,8 +202,8 @@ export default function SessionsClient({ sessions: initialSessions, stats, cours
     )
 
     // Construct proper ISO timestamps from date and time inputs
-    let startTimeISO = null
-    let endTimeISO = null
+    let startTimeISO: string | undefined = undefined
+    let endTimeISO: string | undefined = undefined
 
     if (data.date && data.startTime) {
       startTimeISO = new Date(`${data.date}T${data.startTime}`).toISOString()

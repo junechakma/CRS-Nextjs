@@ -11,7 +11,7 @@ export async function parsePDF(fileBuffer: ArrayBuffer): Promise<string[]> {
     console.log('PDF Parser: Starting PDF parse, buffer size:', fileBuffer.byteLength)
 
     // Dynamic import to avoid SSR issues
-    const pdfParse = (await import('pdf-parse')).default
+    const pdfParse = await import('pdf-parse') as any
     const nodeBuffer = Buffer.from(fileBuffer)
 
     console.log('PDF Parser: Calling pdf-parse...')

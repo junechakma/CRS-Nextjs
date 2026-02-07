@@ -79,7 +79,7 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [semesterToDelete, setSemesterToDelete] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout>()
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -207,6 +207,32 @@ export default function SemestersClient({ semesters: initialSemesters }: Semeste
       if (result.success) {
         toast.success("Semester deleted successfully")
         setSemesters(prev => prev.filter(sem => sem.id !== semesterId))
+        router.refresh()
+      } else {
+        toast.error(result.error || "Failed to delete semester")
+      }
+    } catch (error) {
+      toast.error("An error occurred while deleting the semester")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!semesterToDelete) return
+
+    setIsSubmitting(true)
+    setOpenDropdown(null)
+
+    try {
+      const result = await deleteSemesterAction(semesterToDelete)
+
+      if (result.success) {
+        toast.success("Semester deleted successfully")
+        setSemesters(prev => prev.filter(sem => sem.id !== semesterToDelete))
+        setDeleteConfirmOpen(false)
+        setSemesterToDelete(null)
         router.refresh()
       } else {
         toast.error(result.error || "Failed to delete semester")

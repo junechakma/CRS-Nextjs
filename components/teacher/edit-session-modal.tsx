@@ -18,37 +18,19 @@ import {
   StopCircle,
   Users,
 } from "lucide-react"
-
-interface Session {
-  id: number
-  name: string
-  description?: string
-  course: string
-  courseCode: string
-  accessCode: string
-  status: string
-  responses: number
-  total: number
-  startTime: string
-  endTime: string
-  date: string
-  duration: string
-  courseId?: string
-  templateId?: string
-  expectedStudents?: number
-}
+import { SessionData } from "@/lib/supabase/queries/teacher"
 
 interface EditSessionModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit?: (data: SessionFormData) => void
-  session: Session | null
+  session: SessionData | null
   courses: { id: string; name: string; code: string }[]
   templates: { id: string; name: string }[]
 }
 
 interface SessionFormData {
-  id: number
+  id: string
   name: string
   description: string
   courseId: string
@@ -109,7 +91,7 @@ const convertToDateInput = (dateStr: string) => {
 
 export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, templates }: EditSessionModalProps) {
   const [formData, setFormData] = useState<SessionFormData>({
-    id: 0,
+    id: "",
     name: "",
     description: "",
     courseId: "",
@@ -141,7 +123,7 @@ export function EditSessionModal({ isOpen, onClose, onSubmit, session, courses, 
         endTime: convertTo24Hour(session.endTime),
         accessCode: session.accessCode,
         status: session.status as "scheduled" | "live" | "completed",
-        expectedStudents: session.expectedStudents || session.total || 0,
+        expectedStudents: session.total || 0,
       })
       setErrors({})
     }
