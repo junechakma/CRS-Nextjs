@@ -3,21 +3,32 @@
  * Extract questions from PDF, DOCX, and plain text
  */
 
-// Import using require for better compatibility with CommonJS modules
-const pdfParse = require('pdf-parse')
-const mammoth = require('mammoth')
-
 /**
  * Parse PDF file and extract questions
  */
 export async function parsePDF(fileBuffer: ArrayBuffer): Promise<string[]> {
   try {
-    const data = await pdfParse(Buffer.from(fileBuffer))
+    console.log('PDF Parser: Starting PDF parse, buffer size:', fileBuffer.byteLength)
+
+    // Dynamic import to avoid SSR issues
+    const pdfParse = (await import('pdf-parse')).default
+    const nodeBuffer = Buffer.from(fileBuffer)
+
+    console.log('PDF Parser: Calling pdf-parse...')
+    const data = await pdfParse(nodeBuffer)
+
+    console.log('PDF Parser: Extracted text length:', data.text.length)
+    console.log('PDF Parser: Number of pages:', data.numpages)
+
     const text = data.text
-    return extractQuestionsFromText(text)
+    const questions = extractQuestionsFromText(text)
+
+    console.log('PDF Parser: Extracted questions:', questions.length)
+    return questions
   } catch (error) {
     console.error('Error parsing PDF:', error)
-    throw new Error('Failed to parse PDF file')
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    throw new Error(`Failed to parse PDF file: ${errorMessage}`)
   }
 }
 
@@ -26,12 +37,29 @@ export async function parsePDF(fileBuffer: ArrayBuffer): Promise<string[]> {
  */
 export async function parseDOCX(fileBuffer: ArrayBuffer): Promise<string[]> {
   try {
-    const result = await mammoth.extractRawText({ buffer: Buffer.from(fileBuffer) })
+    console.log('DOCX Parser: Starting DOCX parse, buffer size:', fileBuffer.byteLength)
+
+    // Dynamic import to avoid SSR issues
+    const mammoth = await import('mammoth')
+    const nodeBuffer = Buffer.from(fileBuffer)
+
+    console.log('DOCX Parser: Calling mammoth...')
+    const result = await mammoth.extractRawText({ buffer: nodeBuffer })
+
+    console.log('DOCX Parser: Extracted text length:', result.value.length)
+    if (result.messages && result.messages.length > 0) {
+      console.log('DOCX Parser: Messages:', result.messages)
+    }
+
     const text = result.value
-    return extractQuestionsFromText(text)
+    const questions = extractQuestionsFromText(text)
+
+    console.log('DOCX Parser: Extracted questions:', questions.length)
+    return questions
   } catch (error) {
     console.error('Error parsing DOCX:', error)
-    throw new Error('Failed to parse DOCX file')
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    throw new Error(`Failed to parse DOCX file: ${errorMessage}`)
   }
 }
 

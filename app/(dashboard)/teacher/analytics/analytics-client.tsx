@@ -16,9 +16,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   BookOpen,
-  Lightbulb,
-  AlertTriangle,
-  CheckCircle2,
+  // Lightbulb,      // Commented out - only used for AI insights
+  // AlertTriangle,  // Commented out - only used for AI insights
+  // CheckCircle2,   // Commented out - only used for AI insights
   Star,
   ChevronRight,
   Clock,
@@ -30,41 +30,44 @@ interface AnalyticsClientProps {
   data: TeacherAnalyticsData
 }
 
-// AI Insights - temporary mock data
-const defaultAIInsights = [
-  {
-    id: "1",
-    type: "positive" as const,
-    title: "Strong Practical Examples",
-    description: "Students consistently praise the real-world examples in Machine Learning class. 94% positive mentions.",
-    courseCode: "CS401",
-    confidence: 96,
-  },
-  {
-    id: "2",
-    type: "suggestion" as const,
-    title: "Pacing Adjustment Needed",
-    description: "Multiple students suggest slowing down during complex topics, especially in Database Systems.",
-    courseCode: "CS305",
-    confidence: 87,
-  },
-  {
-    id: "3",
-    type: "warning" as const,
-    title: "Lab Session Concerns",
-    description: "Some students feel lab sessions could use more structured guidance and clearer objectives.",
-    courseCode: "CS201",
-    confidence: 72,
-  },
-  {
-    id: "4",
-    type: "positive" as const,
-    title: "Excellent Communication",
-    description: "Teaching style and clarity of explanations rated highly across all courses.",
-    courseCode: "All",
-    confidence: 91,
-  },
-]
+// ============================================================================
+// AI INSIGHTS - CURRENTLY DISABLED (MOCK DATA COMMENTED OUT)
+// TODO: Enable when ready to use Gemini API for real insights
+// ============================================================================
+// const defaultAIInsights = [
+//   {
+//     id: "1",
+//     type: "positive" as const,
+//     title: "Strong Practical Examples",
+//     description: "Students consistently praise the real-world examples in Machine Learning class. 94% positive mentions.",
+//     courseCode: "CS401",
+//     confidence: 96,
+//   },
+//   {
+//     id: "2",
+//     type: "suggestion" as const,
+//     title: "Pacing Adjustment Needed",
+//     description: "Multiple students suggest slowing down during complex topics, especially in Database Systems.",
+//     courseCode: "CS305",
+//     confidence: 87,
+//   },
+//   {
+//     id: "3",
+//     type: "warning" as const,
+//     title: "Lab Session Concerns",
+//     description: "Some students feel lab sessions could use more structured guidance and clearer objectives.",
+//     courseCode: "CS201",
+//     confidence: 72,
+//   },
+//   {
+//     id: "4",
+//     type: "positive" as const,
+//     title: "Excellent Communication",
+//     description: "Teaching style and clarity of explanations rated highly across all courses.",
+//     courseCode: "All",
+//     confidence: 91,
+//   },
+// ]
 
 const colorClasses: Record<string, { bg: string; text: string; border: string; light: string }> = {
   indigo: { bg: "bg-indigo-500", text: "text-indigo-600", border: "border-indigo-200", light: "bg-indigo-50" },
@@ -87,26 +90,27 @@ export default function AnalyticsClient({ data }: AnalyticsClientProps) {
 
   // Destructure data
   const { stats, courseStats, recentSessions, monthlyTrends, sentimentData } = data
-  const aiInsights = defaultAIInsights
+  // const aiInsights = defaultAIInsights // Commented out - AI features disabled
 
-  const getInsightStyles = (type: "positive" | "suggestion" | "warning") => {
-    switch (type) {
-      case "positive":
-        return { bg: "bg-emerald-50", border: "border-emerald-100", icon: "bg-emerald-100", iconColor: "text-emerald-600" }
-      case "suggestion":
-        return { bg: "bg-blue-50", border: "border-blue-100", icon: "bg-blue-100", iconColor: "text-blue-600" }
-      case "warning":
-        return { bg: "bg-amber-50", border: "border-amber-100", icon: "bg-amber-100", iconColor: "text-amber-600" }
-    }
-  }
+  // AI Insights helper functions - Commented out (not used when AI is disabled)
+  // const getInsightStyles = (type: "positive" | "suggestion" | "warning") => {
+  //   switch (type) {
+  //     case "positive":
+  //       return { bg: "bg-emerald-50", border: "border-emerald-100", icon: "bg-emerald-100", iconColor: "text-emerald-600" }
+  //     case "suggestion":
+  //       return { bg: "bg-blue-50", border: "border-blue-100", icon: "bg-blue-100", iconColor: "text-blue-600" }
+  //     case "warning":
+  //       return { bg: "bg-amber-50", border: "border-amber-100", icon: "bg-amber-100", iconColor: "text-amber-600" }
+  //   }
+  // }
 
-  const getInsightIcon = (type: "positive" | "suggestion" | "warning") => {
-    switch (type) {
-      case "positive": return CheckCircle2
-      case "suggestion": return Lightbulb
-      case "warning": return AlertTriangle
-    }
-  }
+  // const getInsightIcon = (type: "positive" | "suggestion" | "warning") => {
+  //   switch (type) {
+  //     case "positive": return CheckCircle2
+  //     case "suggestion": return Lightbulb
+  //     case "warning": return AlertTriangle
+  //   }
+  // }
 
   return (
     <div className="space-y-6">
@@ -220,10 +224,11 @@ export default function AnalyticsClient({ data }: AnalyticsClientProps) {
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                    {/* AI Badge - Commented out until Gemini integration is enabled */}
+                    {/* <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
                       <Sparkles className="w-3 h-3 mr-1" />
                       AI Powered
-                    </Badge>
+                    </Badge> */}
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 mb-6">
@@ -376,15 +381,18 @@ export default function AnalyticsClient({ data }: AnalyticsClientProps) {
 
               {/* Right Column - 1/3 width */}
               <div className="space-y-6">
-                {/* AI Insights */}
-                <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+                {/* ========================================== */}
+                {/* AI Insights - DISABLED (Commented Out)    */}
+                {/* Uncomment when Gemini integration is ready */}
+                {/* ========================================== */}
+                {/* <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-amber-50 rounded-xl">
                       <Sparkles className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900">AI Insights</h3>
-                      <p className="text-sm text-slate-500">Key findings this semester</p>
+                      <h3 className="font-bold text-slate-900">Key Insights</h3>
+                      <p className="text-sm text-slate-500">Important findings this semester</p>
                     </div>
                   </div>
 
@@ -419,7 +427,7 @@ export default function AnalyticsClient({ data }: AnalyticsClientProps) {
                     View All Insights
                     <ArrowUpRight className="w-4 h-4" />
                   </Button>
-                </div>
+                </div> */}
 
                 {/* Recent Sessions */}
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/60 shadow-sm">

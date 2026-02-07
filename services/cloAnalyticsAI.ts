@@ -5,7 +5,14 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '')
+// Use server-side environment variable (more secure)
+const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+
+if (!apiKey) {
+  console.error('WARNING: GEMINI_API_KEY not set. AI features will not work.')
+}
+
+const genAI = new GoogleGenerativeAI(apiKey)
 
 export interface CLOData {
   id: string
@@ -50,8 +57,13 @@ export async function generateCLOMappings({
   questions: string[]
   clos: CLOData[]
 }): Promise<AIAnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
   const prompt = buildCLOMappingPrompt(questions, clos)
+
+  console.log('Starting AI CLO mapping analysis...', {
+    questionCount: questions.length,
+    cloCount: clos.length,
+  })
 
   try {
     const startTime = Date.now()

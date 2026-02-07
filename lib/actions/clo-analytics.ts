@@ -5,10 +5,291 @@ import { revalidatePath } from 'next/cache'
 import { parsePDF, parseDOCX, parseTextQuestions, validateQuestions } from '@/lib/utils/documentParsers'
 import { generateCLOMappings } from '@/services/cloAnalyticsAI'
 import { analyzeCLOsLocally } from '@/services/cloAnalyticsLocal'
+import { extractQuestionsWithAI, type ExtractedQuestion } from '@/services/questionExtractionAI'
 import { getCLOs } from '@/lib/supabase/queries/teacher'
 
 // ============================================================================
-// DOCUMENT MANAGEMENT
+// NEW WORKFLOW: UPLOAD → EXTRACT → PREVIEW → SAVE
+// ============================================================================
+
+/**
+ * Upload and extract questions using AI (Step 1: Preview phase)
+ * Returns formatted questions for preview, doesn't save to DB yet
+ */
+export async function uploadAndExtractQuestionsAction({
+  cloSetId,
+  file,
+}: {
+  cloSetId: string
+  file: {
+    name: string
+    type: string
+    data: string // base64 encoded file data
+  }
+}) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Verify CLO set ownership
+    const { data: cloSet } = await supabase
+      .from('clo_sets')
+      .select('id')
+      .eq('id', cloSetId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!cloSet) {
+      return { success: false, error: 'CLO set not found' }
+    }
+
+    // Convert base64 to buffer
+    const buffer = Buffer.from(file.data, 'base64')
+
+    // Convert Buffer to ArrayBuffer (required by parsers)
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    )
+
+    console.log('=== Upload and Extract Action ===')
+    console.log('Processing file:', {
+      name: file.name,
+      type: file.type,
+      size: buffer.length,
+    })
+
+    // Parse document to extract raw text
+    let rawText: string
+    try {
+      if (file.type.includes('pdf')) {
+        console.log('📄 Detected PDF file, starting parse...')
+        const questions = await parsePDF(arrayBuffer)
+        console.log('✓ PDF parsed, questions extracted:', questions.length)
+        rawText = questions.join('\n\n')
+      } else if (file.type.includes('word') || file.type.includes('docx') || file.type.includes('document')) {
+        console.log('📝 Detected DOCX file, starting parse...')
+        const questions = await parseDOCX(arrayBuffer)
+        console.log('✓ DOCX parsed, questions extracted:', questions.length)
+        rawText = questions.join('\n\n')
+      } else {
+        console.error('❌ Unsupported file type:', file.type)
+        return { success: false, error: `Unsupported file type: ${file.type}. Please upload PDF or DOCX files.` }
+      }
+
+      console.log('✓ Document parsed successfully')
+      console.log('Raw text length:', rawText.length, 'characters')
+      console.log('Raw text preview (first 200 chars):', rawText.substring(0, 200))
+
+    } catch (error) {
+      console.error('❌ Document parsing failed')
+      console.error('Parse error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: `Failed to parse document: ${errorMessage}` }
+    }
+
+    // Send to Gemini for question extraction and formatting
+    try {
+      console.log('🤖 Sending to Gemini AI for question extraction...')
+      const extractionResult = await extractQuestionsWithAI(rawText)
+      console.log('✓ AI extraction successful!')
+
+      console.log('Extracted questions:', extractionResult.totalQuestions)
+      console.log('Summary:', extractionResult.summary)
+
+      return {
+        success: true,
+        data: {
+          fileName: file.name,
+          fileType: file.type.includes('pdf') ? 'pdf' : 'docx',
+          extractedQuestions: extractionResult.questions,
+          summary: extractionResult.summary,
+          totalQuestions: extractionResult.totalQuestions,
+        },
+      }
+    } catch (error) {
+      console.error('❌ AI extraction failed!')
+      console.error('Extraction error type:', error?.constructor?.name)
+      console.error('Extraction error message:', error instanceof Error ? error.message : String(error))
+
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack)
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: `Failed to extract questions with AI: ${errorMessage}` }
+    }
+  } catch (error) {
+    console.error('Upload and extract error:', error)
+    return { success: false, error: 'Failed to process document' }
+  }
+}
+
+/**
+ * Extract questions from pasted text using AI (Step 1: Preview phase)
+ */
+export async function extractQuestionsFromTextAction({
+  cloSetId,
+  text,
+}: {
+  cloSetId: string
+  text: string
+}) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Verify CLO set ownership
+    const { data: cloSet } = await supabase
+      .from('clo_sets')
+      .select('id')
+      .eq('id', cloSetId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!cloSet) {
+      return { success: false, error: 'CLO set not found' }
+    }
+
+    // Send to Gemini for question extraction and formatting
+    try {
+      console.log('=== Extract from Text Action ===')
+      console.log('Text length:', text.length, 'characters')
+      console.log('Text preview:', text.substring(0, 200))
+
+      console.log('🤖 Sending to Gemini AI for question extraction...')
+      const extractionResult = await extractQuestionsWithAI(text)
+      console.log('✓ AI extraction successful!')
+      console.log('Extracted questions:', extractionResult.totalQuestions)
+
+      return {
+        success: true,
+        data: {
+          extractedQuestions: extractionResult.questions,
+          summary: extractionResult.summary,
+          totalQuestions: extractionResult.totalQuestions,
+        },
+      }
+    } catch (error) {
+      console.error('❌ AI extraction from text failed!')
+      console.error('Extraction error:', error)
+
+      if (error instanceof Error) {
+        console.error('Error message:', error.message)
+        console.error('Stack trace:', error.stack)
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: `Failed to extract questions with AI: ${errorMessage}` }
+    }
+  } catch (error) {
+    console.error('Extract from text error:', error)
+    return { success: false, error: 'Failed to process text' }
+  }
+}
+
+/**
+ * Save extracted questions to database (Step 2: After preview/edit)
+ */
+export async function saveExtractedQuestionsAction({
+  cloSetId,
+  questions,
+  fileName,
+  fileType,
+}: {
+  cloSetId: string
+  questions: ExtractedQuestion[]
+  fileName?: string
+  fileType?: 'pdf' | 'docx' | 'text'
+}) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Verify CLO set ownership
+    const { data: cloSet } = await supabase
+      .from('clo_sets')
+      .select('id')
+      .eq('id', cloSetId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!cloSet) {
+      return { success: false, error: 'CLO set not found' }
+    }
+
+    // Create document record
+    const { data: document, error: docError } = await supabase
+      .from('clo_analysis_documents')
+      .insert({
+        clo_set_id: cloSetId,
+        user_id: user.id,
+        file_name: fileName || null,
+        file_type: fileType || 'text',
+        status: 'parsed', // Already parsed and formatted
+        total_questions: questions.length,
+        parsed_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (docError) {
+      console.error('Error creating document:', docError)
+      return { success: false, error: docError.message }
+    }
+
+    // Save questions
+    const questionRecords = questions.map((q, index) => ({
+      document_id: document.id,
+      clo_set_id: cloSetId,
+      question_number: q.questionNumber,
+      question_text: q.questionText,
+      order_index: index,
+    }))
+
+    const { error: questionsError } = await supabase
+      .from('clo_analysis_questions')
+      .insert(questionRecords)
+
+    if (questionsError) {
+      console.error('Error saving questions:', questionsError)
+      return { success: false, error: 'Failed to save questions' }
+    }
+
+    revalidatePath(`/teacher/clo-mapping/${cloSetId}`)
+    return {
+      success: true,
+      data: {
+        documentId: document.id,
+        totalQuestions: questions.length,
+      },
+    }
+  } catch (error) {
+    console.error('Error saving questions:', error)
+    return { success: false, error: 'Failed to save questions' }
+  }
+}
+
+// ============================================================================
+// DOCUMENT MANAGEMENT (OLD - TO BE REMOVED)
 // ============================================================================
 
 /**

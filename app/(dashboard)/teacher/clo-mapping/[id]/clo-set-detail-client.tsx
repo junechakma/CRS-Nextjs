@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { CLOData } from "@/lib/supabase/queries/teacher"
+import type { AnalysisDocumentData } from "@/lib/supabase/queries/teacher"
 import {
   updateCLOSetAction,
   createCLOAction,
   updateCLOAction,
   deleteCLOAction,
 } from "@/lib/actions/clo"
+import AnalyticsSection from "./analytics-section"
 import {
   Target,
   Plus,
@@ -45,6 +47,7 @@ interface CLOSetDetailClientProps {
     color: string
   }
   clos: CLOData[]
+  initialDocuments: AnalysisDocumentData[]
   userId: string
 }
 
@@ -99,9 +102,12 @@ const bloomLevels = [
   "Create",
 ]
 
+type ActiveTab = 'clos' | 'analytics'
+
 export default function CLOSetDetailClient({
   cloSet: initialCLOSet,
   clos: initialCLOs,
+  initialDocuments,
   userId,
 }: CLOSetDetailClientProps) {
   const router = useRouter()
@@ -115,6 +121,9 @@ export default function CLOSetDetailClient({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [cloToDelete, setCloToDelete] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<ActiveTab>('clos')
 
   // Edit CLO Set form
   const [editSetName, setEditSetName] = useState("")
@@ -291,11 +300,11 @@ export default function CLOSetDetailClient({
         prev.map((c) =>
           c.id === editingCLOId
             ? {
-                ...c,
-                code: cloCode,
-                description: cloDescription,
-                bloomLevel: cloBloomLevel || null,
-              }
+              ...c,
+              code: cloCode,
+              description: cloDescription,
+              bloomLevel: cloBloomLevel || null,
+            }
             : c
         )
       )
@@ -363,6 +372,7 @@ export default function CLOSetDetailClient({
     }
   }
 
+
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -404,11 +414,10 @@ export default function CLOSetDetailClient({
               <Button
                 onClick={handleToggleStatus}
                 variant="outline"
-                className={`gap-2 ${
-                  cloSet.status === "active"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                }`}
+                className={`gap-2 ${cloSet.status === "active"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  }`}
               >
                 {cloSet.status === "active" ? (
                   <>
@@ -421,14 +430,6 @@ export default function CLOSetDetailClient({
                     Draft
                   </>
                 )}
-              </Button>
-              <Button
-                onClick={() => router.push(`/teacher/clo-mapping/${cloSet.id}/analytics`)}
-                variant="outline"
-                className="gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                Analytics
               </Button>
               <Button
                 onClick={openEditSetModal}
@@ -493,481 +494,522 @@ export default function CLOSetDetailClient({
           </div>
         </div>
 
-        {/* CLOs Section */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
-          <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">
-                Course Learning Outcomes
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">
-                Define and manage CLOs for this course
-              </p>
-            </div>
-            <Button
-              onClick={openCreateCLOModal}
-              className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+        {/* Tabs */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="border-b border-slate-200 flex">
+            <button
+              onClick={() => setActiveTab('clos')}
+              className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'clos'
+                ? 'bg-slate-50 text-slate-900 border-b-2 border-slate-900'
+                : 'text-slate-600 hover:bg-slate-50'
+                }`}
             >
-              <Plus className="w-4 h-4" />
-              Add CLO
-            </Button>
+              <Target className="w-5 h-5 inline-block mr-2" />
+              CLOs ({clos.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'analytics'
+                ? 'bg-slate-50 text-slate-900 border-b-2 border-slate-900'
+                : 'text-slate-600 hover:bg-slate-50'
+                }`}
+            >
+              <BarChart3 className="w-5 h-5 inline-block mr-2" />
+              Analytics ({initialDocuments.length})
+            </button>
           </div>
 
-          <div className="p-6">
-            {clos.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-8 h-8 text-slate-400" />
+          {/* CLOs Tab Content */}
+          {activeTab === 'clos' && (
+            <>
+              <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Course Learning Outcomes
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Define and manage CLOs for this course
+                  </p>
                 </div>
-                <h3 className="font-semibold text-slate-700 mb-1">
-                  No CLOs yet
-                </h3>
-                <p className="text-sm text-slate-500 mb-4">
-                  Start by adding your first Course Learning Outcome
-                </p>
                 <Button
                   onClick={openCreateCLOModal}
                   className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
                 >
                   <Plus className="w-4 h-4" />
-                  Add First CLO
+                  Add CLO
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {clos.map((clo, index) => (
-                  <div
-                    key={clo.id}
-                    className="group border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-mono text-sm font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
-                                {clo.code}
-                              </span>
-                              {clo.bloomLevel && (
-                                <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-1 rounded-full">
-                                  {clo.bloomLevel}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-slate-700 mb-3">
-                              {clo.description}
-                            </p>
-
-                            <div className="flex items-center gap-4 text-xs text-slate-500">
-                              <span className="flex items-center gap-1">
-                                <FileText className="w-3.5 h-3.5" />
-                                {clo.mappedQuestions} mapped
-                              </span>
-                              {clo.avgRelevance > 0 && (
-                                <span>
-                                  Avg Relevance: {clo.avgRelevance.toFixed(1)}%
-                                </span>
-                              )}
-                              {clo.coveragePercentage > 0 && (
-                                <span>
-                                  Coverage: {clo.coveragePercentage.toFixed(1)}%
-                                </span>
-                              )}
-                            </div>
+              <div className="p-6">
+                {clos.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                      <Target className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <h3 className="font-semibold text-slate-700 mb-1">
+                      No CLOs yet
+                    </h3>
+                    <p className="text-sm text-slate-500 mb-4">
+                      Start by adding your first Course Learning Outcome
+                    </p>
+                    <Button
+                      onClick={openCreateCLOModal}
+                      className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add First CLO
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {clos.map((clo, index) => (
+                      <div
+                        key={clo.id}
+                        className="group border border-slate-200 rounded-xl p-4 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600">
+                            <GripVertical className="w-5 h-5" />
                           </div>
 
-                          <div
-                            className="relative"
-                            ref={openDropdown === clo.id ? dropdownRef : null}
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setOpenDropdown(
-                                  openDropdown === clo.id ? null : clo.id
-                                )
-                              }}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100"
-                            >
-                              <MoreVertical className="w-4 h-4 text-slate-400" />
-                            </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="font-mono text-sm font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                    {clo.code}
+                                  </span>
+                                  {clo.bloomLevel && (
+                                    <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-1 rounded-full">
+                                      {clo.bloomLevel}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-700 mb-3">
+                                  {clo.description}
+                                </p>
 
-                            {openDropdown === clo.id && (
-                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openEditCLOModal(clo)
-                                  }}
-                                  className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                                >
-                                  <Pencil className="w-4 h-4 text-slate-400" />
-                                  Edit CLO
-                                </button>
-
-                                <div className="border-t border-slate-100 my-1" />
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDeleteCLO(clo.id)
-                                  }}
-                                  className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                  Delete CLO
-                                </button>
+                                <div className="flex items-center gap-4 text-xs text-slate-500">
+                                  <span className="flex items-center gap-1">
+                                    <FileText className="w-3.5 h-3.5" />
+                                    {clo.mappedQuestions} mapped
+                                  </span>
+                                  {clo.avgRelevance > 0 && (
+                                    <span>
+                                      Avg Relevance: {clo.avgRelevance.toFixed(1)}%
+                                    </span>
+                                  )}
+                                  {clo.coveragePercentage > 0 && (
+                                    <span>
+                                      Coverage: {clo.coveragePercentage.toFixed(1)}%
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            )}
+
+                              <div
+                                className="relative"
+                                ref={openDropdown === clo.id ? dropdownRef : null}
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setOpenDropdown(
+                                      openDropdown === clo.id ? null : clo.id
+                                    )
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                  <MoreVertical className="w-4 h-4 text-slate-400" />
+                                </button>
+
+                                {openDropdown === clo.id && (
+                                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openEditCLOModal(clo)
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                                    >
+                                      <Pencil className="w-4 h-4 text-slate-400" />
+                                      Edit CLO
+                                    </button>
+
+                                    <div className="border-t border-slate-100 my-1" />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDeleteCLO(clo.id)
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete CLO
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Edit CLO Set Modal */}
-      {isEditSetModalOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setIsEditSetModalOpen(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-2xl w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-6 pt-6 pb-4 border-b border-slate-100">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`p-2.5 rounded-xl bg-gradient-to-br ${colors.gradient} shadow-lg shadow-indigo-200`}
-                    >
-                      <Target className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        Edit CLO Set
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        Update CLO set details
-                      </p>
-                    </div>
-                  </div>
-                  <button
+
+
+              {/* Edit CLO Set Modal */}
+              {isEditSetModalOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setIsEditSetModalOpen(false)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    CLO Set Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editSetName}
-                    onChange={(e) => setEditSetName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                   />
-                </div>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                      className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-2xl w-full"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`p-2.5 rounded-xl bg-gradient-to-br ${colors.gradient} shadow-lg shadow-indigo-200`}
+                            >
+                              <Target className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-lg font-semibold text-slate-900">
+                                Edit CLO Set
+                              </h2>
+                              <p className="text-sm text-slate-500">
+                                Update CLO set details
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setIsEditSetModalOpen(false)}
+                            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={editSetDescription}
-                    onChange={(e) => setEditSetDescription(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
-                  />
-                </div>
-              </div>
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            CLO Set Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editSetName}
+                            onChange={(e) => setEditSetName(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                          />
+                        </div>
 
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <Button
-                  onClick={() => setIsEditSetModalOpen(false)}
-                  variant="outline"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleEditSetSubmit}
-                  disabled={isSubmitting || !editSetName}
-                  className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Save Changes
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Description
+                          </label>
+                          <textarea
+                            value={editSetDescription}
+                            onChange={(e) => setEditSetDescription(e.target.value)}
+                            rows={3}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
+                          />
+                        </div>
+                      </div>
 
-      {/* Create CLO Modal */}
-      {isCreateCLOModalOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setIsCreateCLOModalOpen(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-2xl w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-6 pt-6 pb-4 border-b border-slate-100">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200">
-                      <Target className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        Add Course Learning Outcome
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        Define a new CLO for this course
-                      </p>
+                      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <Button
+                          onClick={() => setIsEditSetModalOpen(false)}
+                          variant="outline"
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleEditSetSubmit}
+                          disabled={isSubmitting || !editSetName}
+                          className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              Save Changes
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <button
+                </>
+              )}
+
+              {/* Create CLO Modal */}
+              {isCreateCLOModalOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setIsCreateCLOModalOpen(false)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    CLO Code <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={cloCode}
-                    onChange={(e) => setCloCode(e.target.value)}
-                    placeholder="e.g., CLO-1"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                   />
-                </div>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                      className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-2xl w-full"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200">
+                              <Target className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-lg font-semibold text-slate-900">
+                                Add Course Learning Outcome
+                              </h2>
+                              <p className="text-sm text-slate-500">
+                                Define a new CLO for this course
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setIsCreateCLOModalOpen(false)}
+                            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={cloDescription}
-                    onChange={(e) => setCloDescription(e.target.value)}
-                    placeholder="Describe what students should be able to do..."
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
-                  />
-                </div>
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            CLO Code <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={cloCode}
+                            onChange={(e) => setCloCode(e.target.value)}
+                            placeholder="e.g., CLO-1"
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                          />
+                        </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Bloom's Taxonomy Level (Optional)
-                  </label>
-                  <select
-                    value={cloBloomLevel}
-                    onChange={(e) => setCloBloomLevel(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                  >
-                    <option value="">Select a level</option>
-                    {bloomLevels.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Description <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={cloDescription}
+                            onChange={(e) => setCloDescription(e.target.value)}
+                            placeholder="Describe what students should be able to do..."
+                            rows={3}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
+                          />
+                        </div>
 
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <Button
-                  onClick={() => setIsCreateCLOModalOpen(false)}
-                  variant="outline"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateCLOSubmit}
-                  disabled={isSubmitting || !cloCode || !cloDescription}
-                  className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Add CLO
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Bloom's Taxonomy Level (Optional)
+                          </label>
+                          <select
+                            value={cloBloomLevel}
+                            onChange={(e) => setCloBloomLevel(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                          >
+                            <option value="">Select a level</option>
+                            {bloomLevels.map((level) => (
+                              <option key={level} value={level}>
+                                {level}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
 
-      {/* Edit CLO Modal */}
-      {isEditCLOModalOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setIsEditCLOModalOpen(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-2xl w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-6 pt-6 pb-4 border-b border-slate-100">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200">
-                      <Target className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        Edit Course Learning Outcome
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        Update CLO details
-                      </p>
+                      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <Button
+                          onClick={() => setIsCreateCLOModalOpen(false)}
+                          variant="outline"
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleCreateCLOSubmit}
+                          disabled={isSubmitting || !cloCode || !cloDescription}
+                          className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              Add CLO
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <button
+                </>
+              )}
+
+              {/* Edit CLO Modal */}
+              {isEditCLOModalOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setIsEditCLOModalOpen(false)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    CLO Code <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={cloCode}
-                    onChange={(e) => setCloCode(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                   />
-                </div>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                      className="relative bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 max-w-2xl w-full"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-200">
+                              <Target className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-lg font-semibold text-slate-900">
+                                Edit Course Learning Outcome
+                              </h2>
+                              <p className="text-sm text-slate-500">
+                                Update CLO details
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setIsEditCLOModalOpen(false)}
+                            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={cloDescription}
-                    onChange={(e) => setCloDescription(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
-                  />
-                </div>
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            CLO Code <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={cloCode}
+                            onChange={(e) => setCloCode(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                          />
+                        </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Bloom's Taxonomy Level (Optional)
-                  </label>
-                  <select
-                    value={cloBloomLevel}
-                    onChange={(e) => setCloBloomLevel(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                  >
-                    <option value="">Select a level</option>
-                    {bloomLevels.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Description <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={cloDescription}
+                            onChange={(e) => setCloDescription(e.target.value)}
+                            rows={3}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
+                          />
+                        </div>
 
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <Button
-                  onClick={() => setIsEditCLOModalOpen(false)}
-                  variant="outline"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleEditCLOSubmit}
-                  disabled={isSubmitting || !cloCode || !cloDescription}
-                  className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Save Changes
-                    </>
-                  )}
-                </Button>
-              </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Bloom's Taxonomy Level (Optional)
+                          </label>
+                          <select
+                            value={cloBloomLevel}
+                            onChange={(e) => setCloBloomLevel(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                          >
+                            <option value="">Select a level</option>
+                            {bloomLevels.map((level) => (
+                              <option key={level} value={level}>
+                                {level}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <Button
+                          onClick={() => setIsEditCLOModalOpen(false)}
+                          variant="outline"
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleEditCLOSubmit}
+                          disabled={isSubmitting || !cloCode || !cloDescription}
+                          className="gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              Save Changes
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Analytics Tab Content */}
+          {activeTab === 'analytics' && (
+            <div className="p-6">
+              <AnalyticsSection
+                cloSetId={cloSet.id}
+                clos={clos}
+                initialDocuments={initialDocuments}
+              />
+            </div>
+          )}
             </div>
           </div>
-        </>
-      )}
 
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={deleteConfirmOpen}
-        onClose={() => {
-          setDeleteConfirmOpen(false)
-          setCloToDelete(null)
-        }}
-        onConfirm={confirmDeleteCLO}
-        title="Delete CLO"
-        message="Are you sure you want to delete this CLO? This action cannot be undone and will remove all question mappings associated with this CLO."
-        confirmText="Delete CLO"
-        cancelText="Cancel"
-        isDestructive={true}
-        isLoading={isSubmitting}
-      />
-    </>
-  )
+          {/* Delete Confirmation Dialog */}
+          <ConfirmDialog
+            isOpen={deleteConfirmOpen}
+            onClose={() => {
+              setDeleteConfirmOpen(false)
+              setCloToDelete(null)
+            }}
+            onConfirm={confirmDeleteCLO}
+            title="Delete CLO"
+            message="Are you sure you want to delete this CLO? This action cannot be undone and will remove all question mappings associated with this CLO."
+            confirmText="Delete CLO"
+            cancelText="Cancel"
+            isDestructive={true}
+            isLoading={isSubmitting}
+          />
+      </>
+    )
 }

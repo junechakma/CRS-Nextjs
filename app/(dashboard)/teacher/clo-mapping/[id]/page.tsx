@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCLOSet, getCLOs } from '@/lib/supabase/queries/teacher'
+import { getCLOSet, getCLOs, getAnalysisDocuments } from '@/lib/supabase/queries/teacher'
 import CLOSetDetailClient from './clo-set-detail-client'
 import { Target, Loader2 } from 'lucide-react'
 
@@ -59,10 +59,11 @@ async function CLOSetDetailContent({ params }: PageProps) {
     redirect('/super-admin')
   }
 
-  // Fetch CLO set and CLOs
-  const [cloSet, clos] = await Promise.all([
+  // Fetch CLO set, CLOs, and analysis documents
+  const [cloSet, clos, documents] = await Promise.all([
     getCLOSet(id, user.id),
     getCLOs(id),
+    getAnalysisDocuments(id),
   ])
 
   if (!cloSet) {
@@ -73,6 +74,7 @@ async function CLOSetDetailContent({ params }: PageProps) {
     <CLOSetDetailClient
       cloSet={cloSet}
       clos={clos}
+      initialDocuments={documents}
       userId={user.id}
     />
   )

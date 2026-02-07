@@ -35,7 +35,7 @@ export interface SessionData {
 }
 
 export class AIAnalyticsService {
-  private model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+  private model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
 
   async analyzeSessionData(sessionData: SessionData): Promise<AIInsight> {
     const prompt = this.buildAnalysisPrompt(sessionData)

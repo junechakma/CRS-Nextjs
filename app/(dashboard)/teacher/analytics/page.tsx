@@ -19,7 +19,7 @@ function PageHeader() {
           </h1>
         </div>
         <p className="text-slate-500">
-          AI-powered insights across all your courses and sessions
+          Comprehensive insights across all your courses and sessions
         </p>
       </div>
     </div>
