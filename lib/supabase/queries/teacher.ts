@@ -14,7 +14,7 @@ export interface TeacherDashboardData {
   }
   stats: {
     activeCourses: number
-    totalStudents: number
+    completedSessions: number
     totalResponses: number
     liveSessions: number
     weeklyResponseChange: number
@@ -135,6 +135,13 @@ export async function getTeacherDashboardStats(userId: string) {
     .eq('user_id', userId)
     .eq('status', 'live')
 
+  // Get completed sessions
+  const { count: completedSessions } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+
   // Get responses this week for change calculation
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
@@ -147,7 +154,7 @@ export async function getTeacherDashboardStats(userId: string) {
 
   return {
     activeCourses: coursesCount || 0,
-    totalStudents: totalStudents,
+    completedSessions: completedSessions || 0,
     totalResponses: totalResponses || 0,
     liveSessions: liveSessions || 0,
     weeklyResponseChange: weeklyResponses || 0,
@@ -1839,7 +1846,7 @@ export async function getTeacherAnalytics(userId: string): Promise<TeacherAnalyt
       responseCount: s.response_count || 0,
       avgRating: parseFloat(s.avg_rating) || 0,
       avgCompletionTime: s.avg_completion_time_seconds || 0,
-      completedAt: s.end_time,
+      completedAt: s.end_time ? getTimeAgo(s.end_time) : null,
     })),
     monthlyTrends: (trendsData || []).map(t => ({
       month: new Date(t.month).toLocaleDateString('en-US', { month: 'short' }),
